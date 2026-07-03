@@ -6,8 +6,8 @@
 .importzp p0, p1, p2
 .import wait_nmi, vq, vq_len
 .export load_palette, draw_screen, clear_nt, vq_send, linebuf
-.export vaddr_hi, vaddr_lo, addr_row, rowbase, draw_col
-.exportzp colc, mcol0
+.export addr_row, rowbase, draw_col
+.exportzp colc, mcol0, vaddr_hi, vaddr_lo
 .export _mt_tl, _mt_tr, _mt_bl, _mt_br, _mt_attr
 
 .import mt_tl_tbl, mt_tr_tbl, mt_bl_tbl, mt_br_tbl, mt_attr_tbl

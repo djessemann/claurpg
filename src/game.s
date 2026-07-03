@@ -9,9 +9,11 @@
 .importzp scrollX, scrollXhi, scrollY
 .import wait_nmi, ppu_off, ppu_on, read_pad, set_chr_bg, set_chr_spr
 .import load_palette, draw_screen, clear_nt, OAM, draw_col, rowbase
-.importzp colc
+.import win_box, win_print, restore_rows_ui, print_num
+.importzp colc, uarg, num_lo, num_hi
 .import mt_attr_tbl
 .import spr_AX_D0, spr_AX_D1, spr_AX_U0, spr_AX_U1, spr_AX_L0, spr_AX_L1
+.importzp pad_new
 .export main_init
 
 MAPW = 48
@@ -38,6 +40,9 @@ col_first: .res 1                ; leftmost map col valid in torus
 col_last:  .res 1                ; rightmost map col valid in torus
 wcol:      .res 1
 tmp_r:     .res 1
+area_map_ptr: .res 2             ; pointer to current area map
+area_w:       .res 1             ; current area width in metatiles
+.exportzp area_map_ptr, area_w
 
 .segment "BSS"
 area_map: .res MAPW*MAPH
@@ -47,6 +52,12 @@ area_map: .res MAPW*MAPH
 main_init:
   jsr ppu_off
   jsr build_map
+  lda #<area_map
+  sta area_map_ptr
+  lda #>area_map
+  sta area_map_ptr+1
+  lda #MAPW
+  sta area_w
   lda #<pal_ship
   sta p0
   lda #>pal_ship
@@ -91,6 +102,12 @@ field_loop:
   jsr read_pad
   lda moving
   bne @step
+  lda pad_new
+  and #BTN_A
+  beq :+
+  jsr test_dialog
+  jmp @after
+:
   jsr try_move
   jmp @after
 @step:
@@ -162,6 +179,45 @@ stream_cols:
   bcs @done
   sta col_last
 @done:
+  rts
+
+; --- temporary UI test: message box + text, then restore ---
+test_dialog:
+  lda #1
+  sta uarg+0
+  lda #20
+  sta uarg+1
+  lda #30
+  sta uarg+2
+  lda #8
+  sta uarg+3
+  jsr win_box
+  lda #<txt_test1
+  sta p0
+  lda #>txt_test1
+  sta p0+1
+  ldx #3
+  ldy #22
+  jsr win_print
+  lda #<txt_test2
+  sta p0
+  lda #>txt_test2
+  sta p0+1
+  ldx #3
+  ldy #24
+  jsr win_print
+  jsr wait_a
+  lda #20
+  ldx #8
+  jsr restore_rows_ui
+  rts
+
+wait_a:
+  jsr wait_nmi
+  jsr read_pad
+  lda pad_new
+  and #BTN_A
+  beq wait_a
   rts
 
 ; hero pixel pos from tile pos
@@ -639,6 +695,8 @@ setmt:
   rts
 
 .segment "RODATA"
+txt_test1: .byte "AXIOM ONLINE. THE EREBUS IS", TXT_END
+txt_test2: .byte "DARK. LIFE SUPPORT: FAILING.", TXT_END
 dx_tbl: .byte 0, 0, 1, $FF
 dy_tbl: .byte 1, $FF, 0, 0
 
