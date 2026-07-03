@@ -382,27 +382,24 @@ field_menu:
   lda #12
   sta uarg+3
   jsr win_box
-  ldx #0
+  lda #0
+  sta di
 @l:
-  txa
-  pha
+  lda di
   asl
   clc
   adc #2
   tay
-  txa
-  asl
-  tax
+  ldx di
   lda fm_name_l,x
   sta p0
   lda fm_name_h,x
   sta p0+1
   ldx #2
   jsr win_print
-  pla
-  tax
-  inx
-  cpx #4
+  inc di
+  lda di
+  cmp #4
   bne @l
   lda #1
   sta mn_col
