@@ -1,79 +1,64 @@
 ; ============================================================================
-; battle.s — DQ-style first-person battles, levels, boss, ending
+; battle.s — screen-swap battles (enemy as BG art), techs, items, leveling
 ; ============================================================================
+.include "defs.inc"
+.include "gen/tiles.inc"
+
+.importzp p0, p1, p2, pad, pad_new, frame_cnt
+.importzp scrollX, scrollXhi, scrollY
+.import wait_nmi, ppu_off, ppu_on, read_pad, rand_mod, rng_step
+.importzp rng
+.import load_palette, clear_nt
+.import win_box, win_print, win_clearline, print_num, win_putc
+.importzp num_lo, num_hi, uarg
+.import menu_run
+.importzp mn_col, mn_row, mn_step, mn_count, mn_cur
+.importzp lvl, xp, credits, hp, maxhp, en, maxen, weap, armr, chip, skills
+.import items, apply_level, calc_atk, calc_def
+.import lvl_pow, xp_next, enemy_tbl
+.import tech_en, tech_pow, tech_lvl, tech_name_l, tech_name_h
+.import item_name_l, item_name_h
+.import music_play, sfx_play, redraw_field
+.export battle, battle_result
 
 .segment "ZEROPAGE"
+eid:    .res 1
+ehp:    .res 1
+ehp_max:.res 1
 e_atk:  .res 1
 e_def:  .res 1
 e_xp:   .res 1
-e_gold: .res 1
-e_sp:   .res 1                  ; chance/256 of a fire spell
-e_fire: .res 1                  ; fire spell base damage
-ename:  .res 2
-egfx:   .res 2
+e_cr:   .res 1
+e_ai:   .res 1
+e_spec: .res 1
 e_w:    .res 1
 e_h:    .res 1
+egfx:   .res 2
+ename:  .res 2
+scanned:.res 1
+dmg:    .res 1
 bcol:   .res 1
 brow:   .res 1
-bres:   .res 1                  ; 0 fight on, 1 enemy dead, 2 fled, 3 hero died
-dmg:    .res 1
+btmp:   .res 1
+battle_result: .res 1           ; 0 fled/won, 1 died
 
 .segment "CODE"
 
-; ------------------------------------------------------------ derived stats
-apply_level:
-  ldx lvl
-  dex
-  lda tbl_str,x
-  sta pstr
-  lda tbl_agi,x
-  sta pagi
-  lda tbl_hp,x
-  sta maxhp
-  lda tbl_mp,x
-  sta maxmp
-  rts
-
-calc_patk:
-  ldx weap
-  lda weap_atk,x
-  clc
-  adc pstr
-  rts
-
-calc_pdef:
-  lda pagi
-  lsr
-  sta t3
-  ldx armr
-  lda armr_def,x
-  clc
-  adc t3
-  rts
-
-; --------------------------------------------------------------- battle setup
+; A = enemy id
 battle:
   sta eid
-  lda #0
-  sta bres
-  lda #MUS_BATTLE
-  jsr music_play
-  jsr screen_off
-  jsr oam_clear
-  jsr clear_nt
-  ; enemy record -> zero page
-  lda eid
   asl
   asl
   asl
   asl
-  tax
-  lda enemy_tbl,x
+  tax                           ; *16
+  lda enemy_tbl+0,x
   sta ename
   lda enemy_tbl+1,x
   sta ename+1
   lda enemy_tbl+2,x
   sta ehp
+  sta ehp_max
   lda enemy_tbl+3,x
   sta e_atk
   lda enemy_tbl+4,x
@@ -81,11 +66,11 @@ battle:
   lda enemy_tbl+5,x
   sta e_xp
   lda enemy_tbl+6,x
-  sta e_gold
+  sta e_cr
   lda enemy_tbl+7,x
-  sta e_sp
+  sta e_ai
   lda enemy_tbl+8,x
-  sta e_fire
+  sta e_spec
   lda enemy_tbl+9,x
   sta egfx
   lda enemy_tbl+10,x
@@ -94,521 +79,874 @@ battle:
   sta e_w
   lda enemy_tbl+12,x
   sta e_h
-  ; palettes
-  jsr load_field_pal
-  bit PPUSTATUS
-  lda #$3F
-  sta PPUADDR
-  lda #$05
-  sta PPUADDR
+  stx eidx                      ; save *16 index for palette bytes
+  lda #0
+  sta scanned
+  sta battle_result
+  ; ---- set up battle screen ----
+  jsr ppu_off
+  lda #0
+  sta scrollX
+  sta scrollXhi
+  sta scrollY
+  lda #$20
+  jsr clear_nt
+  lda #$24
+  jsr clear_nt
+  jsr draw_enemy_bg
+  ; palette: copy template to RAM, patch enemy colors into P1
+  ldx #0
+@cp:
+  lda bpal,x
+  sta palbuf,x
+  inx
+  cpx #32
+  bne @cp
+  ldx eidx
   lda enemy_tbl+13,x
-  sta PPUDATA
+  sta palbuf+5
   lda enemy_tbl+14,x
-  sta PPUDATA
+  sta palbuf+6
   lda enemy_tbl+15,x
-  sta PPUDATA
-  ; enemy graphic, centered
-  lda e_w
-  lsr
-  sta t3
-  lda #16
-  sec
-  sbc t3
-  sta bcol
-  lda #9
-  sta brow
+  sta palbuf+7
+  lda #<palbuf
+  sta p0
+  lda #>palbuf
+  sta p0+1
+  jsr load_palette
+  lda #MUS_BATTLE
+  jsr music_play
+  jsr ppu_on
+  ; windows
+  jsr draw_status_box
+  jsr draw_msg_box
+  ; intro
+  lda ename
+  sta p0
+  lda ename+1
+  sta p0+1
+  jsr msg_line1
+  lda #<txt_appears
+  sta p0
+  lda #>txt_appears
+  sta p0+1
+  ldx #2
+  ldy #24
+  jsr win_print
+  jsr bpause
+; -------------------------------------------------------- turn loop
+@turn:
+  jsr draw_cmd_box
+  lda #22
+  sta mn_col
+  lda #2
+  sta mn_row
+  lda #2
+  sta mn_step
+  lda #5
+  sta mn_count
+  lda #0
+  sta mn_cur
+  jsr menu_run
+  cmp #0
+  bne :+
+  jsr do_attack
+  jmp @resolve
+:
+  cmp #1
+  bne :+
+  lda #0
+  sta tech_none
+  jsr do_tech
+  lda tech_none
+  bne @turn
+  jmp @resolve
+:
+  cmp #2
+  bne :+
+  lda #0
+  sta tech_none
+  jsr do_item
+  lda tech_none
+  bne @turn
+  jmp @resolve
+:
+  cmp #3
+  bne :+
+  jsr do_scan
+  jmp @turn                     ; scan doesn't end turn
+:
+  ; flee
+  jsr do_flee
+  lda flee_ok
+  beq @resolve
+  jmp @leave
+@resolve:
+  lda ehp
+  bne @enemyturn
+  jmp @victory
+@enemyturn:
+  jsr enemy_turn
+  lda hp
+  bne @turn
+  jmp @death
+@victory:
+  jsr do_victory
+@leave:
+  lda #MUS_NONE
+  jsr music_play
+  jmp redraw_field
+@death:
+  lda #1
+  sta battle_result
+  jsr do_death
+  jmp @leave
+
+; ---------------------------------------------------- draw enemy (BG)
+draw_enemy_bg:
   lda egfx
   sta p0
   lda egfx+1
   sta p0+1
-  lda e_w
-  sta t3
-  lda e_h
-  sta t4
-  ldx bcol
-  ldy brow
-  jsr draw_gfx_blank
-  ; windows
-  lda #1
-  sta wx
-  sta wy
-  lda #10
-  sta ww
-  lda #8
-  sta wh
-  jsr win_blank
-  lda #20
-  sta wx
-  lda #1
-  sta wy
-  lda #11
-  sta ww
-  lda #9
-  sta wh
-  jsr win_blank
-  lda #0
-  sta wx
-  lda #20
-  sta wy
+  ; startcol = (32 - e_w)/2 ; startrow = 5
   lda #32
-  sta ww
-  lda #8
-  sta wh
-  jsr win_blank
-  lda #1
-  sta dopen_f
-  jsr screen_on
-  jsr cmd_items_fight
-  jsr update_status
-  ; intro
-  jsr bclear
-  lda eid
-  cmp #EN_KING
-  beq @king
-  jsr put_ename
-  lda #<txt_b_near
-  sta p0
-  lda #>txt_b_near
-  sta p0+1
-  jsr dput_str
-  jmp @intro_done
-@king:
-  lda #<txt_b_kingrise
-  sta p0
-  lda #>txt_b_kingrise
-  sta p0+1
-  jsr dput_str
-@intro_done:
-  jsr bpause
-; ----------------------------------------------------------------- turn loop
-@turn:
-  lda #21
-  sta mn_cx
-  lda #2
-  sta mn_cy
-  sta mn_st
-  lda #4
-  sta curmax
-  jsr menu_run
-  cmp #0
-  beq @fight
-  cmp #1
-  beq @spell
-  cmp #2
-  beq @item
-  cmp #3
-  beq @run
-  jmp @turn                     ; B cancels nothing here
-@fight:
-  jsr player_attack
-  jmp @resolve
-@spell:
-  jsr spell_menu
-  jmp @resolve
-@item:
-  jsr use_item
-  jmp @resolve
-@run:
-  jsr try_run
-@resolve:
-  lda bres
-  cmp #1
-  beq @won
-  cmp #2
-  beq @out
-  cmp #3
-  beq @out
-  cmp #4
-  beq @noturn                   ; menu cancelled / nothing happened
-  jsr enemy_turn
-  lda bres
-  cmp #3
-  beq @out
-@noturn:
+  sec
+  sbc e_w
+  lsr
+  sta bcol
+  lda #5
+  sta brow
   lda #0
-  sta bres
-  jmp @turn
-@won:
-  jmp victory
-@out:
-  lda #0
-  sta dopen_f
+  sta btmp                      ; row counter
+@row:
+  bit PPUSTATUS
+  lda brow
+  clc
+  adc btmp
+  pha
+  lsr
+  lsr
+  lsr
+  ora #$20
+  sta PPUADDR
+  pla
+  and #$07
+  asl
+  asl
+  asl
+  asl
+  asl
+  clc
+  adc bcol
+  sta PPUADDR
+  ldy #0
+@col:
+  lda (p0),y
+  sta PPUDATA
+  iny
+  cpy e_w
+  bne @col
+  ; advance gfx ptr by e_w
+  lda p0
+  clc
+  adc e_w
+  sta p0
+  bcc :+
+  inc p0+1
+:
+  inc btmp
+  lda btmp
+  cmp e_h
+  bne @row
+  ; attributes: set covering cells to palette 1
+  jsr enemy_attrs
   rts
 
-; --------------------------------------------------------------- player turn
-player_attack:
-  jsr bclear
-  lda #<txt_b_youatk
+; set attribute cells covering the enemy region to palette 1
+enemy_attrs:
+  ; attr cells: cols (bcol/4)..((bcol+e_w-1)/4), rows (brow/4)..((brow+e_h-1)/4)
+  lda brow
+  lsr
+  lsr
+  sta btmp                      ; attr row start
+@ar:
+  lda bcol
+  lsr
+  lsr
+  sta p2                        ; attr col cursor
+@ac:
+  bit PPUSTATUS
+  lda #$23
+  sta PPUADDR
+  lda btmp
+  asl
+  asl
+  asl
+  clc
+  adc #$C0
+  clc
+  adc p2
+  sta PPUADDR
+  lda #$55                      ; all four quadrants palette 1
+  sta PPUDATA
+  inc p2
+  lda bcol
+  clc
+  adc e_w
+  sec
+  sbc #1
+  lsr
+  lsr
+  cmp p2
+  bcs @ac
+  inc btmp
+  lda brow
+  clc
+  adc e_h
+  sec
+  sbc #1
+  lsr
+  lsr
+  cmp btmp
+  bcs @ar
+  rts
+
+; ---------------------------------------------------- windows
+draw_status_box:
+  lda #0
+  sta uarg+0
+  lda #0
+  sta uarg+1
+  lda #11
+  sta uarg+2
+  lda #7
+  sta uarg+3
+  jsr win_box
+  jmp refresh_status
+
+refresh_status:
+  lda #<txt_lv
   sta p0
-  lda #>txt_b_youatk
+  lda #>txt_lv
   sta p0+1
-  jsr dput_str
-  jsr bpause_s
+  ldx #2
+  ldy #1
+  jsr win_print
+  lda lvl
+  sta num_lo
+  lda #0
+  sta num_hi
+  ldx #5
+  ldy #1
+  jsr print_num
+  lda #<txt_hp
+  sta p0
+  lda #>txt_hp
+  sta p0+1
+  ldx #2
+  ldy #3
+  jsr win_print
+  lda hp
+  sta num_lo
+  lda #0
+  sta num_hi
+  ldx #5
+  ldy #3
+  jsr print_num
+  lda #<txt_en
+  sta p0
+  lda #>txt_en
+  sta p0+1
+  ldx #2
+  ldy #5
+  jsr win_print
+  lda en
+  sta num_lo
+  lda #0
+  sta num_hi
+  ldx #5
+  ldy #5
+  jsr print_num
+  rts
+
+draw_cmd_box:
+  lda #20
+  sta uarg+0
+  lda #0
+  sta uarg+1
+  lda #12
+  sta uarg+2
+  lda #12
+  sta uarg+3
+  jsr win_box
+  lda #0
+  sta bi
+@l:
+  lda bi
+  asl
+  clc
+  adc #2
+  tay
+  ldx bi
+  lda cmd_lo,x
+  sta p0
+  lda cmd_hi,x
+  sta p0+1
+  ldx #23
+  jsr win_print
+  inc bi
+  lda bi
+  cmp #5
+  bne @l
+  rts
+
+draw_msg_box:
+  lda #0
+  sta uarg+0
+  lda #22
+  sta uarg+1
+  lda #32
+  sta uarg+2
+  lda #8
+  sta uarg+3
+  jmp win_box
+
+; print string p0 at message line 1 (row 22 interior -> row 23)
+msg_line1:
+  ldx #2
+  ldy #23
+  jsr win_print
+  rts
+
+clear_msg:
+  lda #28
+  ldx #2
+  ldy #23
+  jsr win_clearline
+  lda #28
+  ldx #2
+  ldy #24
+  jsr win_clearline
+  lda #28
+  ldx #2
+  ldy #25
+  jmp win_clearline
+
+; ---------------------------------------------------- player actions
+do_attack:
+  jsr clear_msg
+  lda #<txt_youhit
+  sta p0
+  lda #>txt_youhit
+  sta p0+1
+  jsr msg_line1
+  jsr calc_atk
+  sta btmp
+  lda e_def
+  jsr damage_calc               ; dmg = f(btmp atk, e_def)
   lda #SFX_HIT
   jsr sfx_play
-  jsr flash_enemy
-  jsr calc_patk
-  sta t0
-  lda e_def
-  sta t1
-  jsr calc_damage
-  sta dmg
   jmp hurt_enemy
 
-; deal dmg to the enemy, report, detect death
-hurt_enemy:
-  jsr bclear
-  jsr put_ename
-  lda #<txt_b_takes
+do_tech:
+  ; sub-menu of known techs
+  jsr draw_cmd_box              ; reuse box area for tech list
+  ; list techs the player knows
+  lda #0
+  sta btmp                      ; count
+  lda #0
+  sta bi
+@build:
+  ldx bi
+  lda skills
+  and pow2,x
+  beq @skip
+  lda btmp
+  asl
+  clc
+  adc #2
+  tay
+  ldx bi
+  lda tech_name_l,x
   sta p0
-  lda #>txt_b_takes
+  lda tech_name_h,x
   sta p0+1
-  jsr dput_str
+  ldx #23
+  jsr win_print
+  ldx btmp
+  lda bi
+  sta tech_map,x
+  inc btmp
+@skip:
+  inc bi
+  lda bi
+  cmp #5
+  bne @build
+  lda btmp
+  bne :+
+  jmp @cancel
+:
+  lda #22
+  sta mn_col
+  lda #2
+  sta mn_row
+  lda #2
+  sta mn_step
+  lda btmp
+  sta mn_count
+  lda #0
+  sta mn_cur
+  jsr menu_run
+  cmp #$FF
+  bne :+
+  jmp @cancel
+:
+  tax
+  lda tech_map,x
+  sta btmp                      ; chosen tech id
+  tax
+  ; enough EN?
+  lda en
+  cmp tech_en,x
+  bcs @cast
+  jsr clear_msg
+  lda #<txt_noen
+  sta p0
+  lda #>txt_noen
+  sta p0+1
+  jsr msg_line1
+  jsr bpause
+  lda #$FF
+  sta tech_none
+  rts
+@cast:
+  lda en
+  sec
+  sbc tech_en,x
+  sta en
+  jsr refresh_status
+  lda #SFX_TECH
+  jsr sfx_play
+  ldx btmp
+  cpx #1
+  beq @repair
+  cpx #2
+  beq @scan2
+  ; damaging tech (PULSE/OVERLOAD/PURGE)
+  jsr clear_msg
+  ldx btmp
+  lda tech_name_l,x
+  sta p0
+  lda tech_name_h,x
+  sta p0+1
+  jsr msg_line1
+  ldx btmp
+  lda tech_pow,x
+  sta btmp
+  lda #4
+  jsr rand_mod
+  clc
+  adc btmp
+  sta btmp
+  lda #0                        ; techs bypass some def
+  jsr damage_calc
+  jmp hurt_enemy
+@repair:
+  jsr clear_msg
+  lda #<txt_repair
+  sta p0
+  lda #>txt_repair
+  sta p0+1
+  jsr msg_line1
+  lda #20
+  jsr rand_mod
+  clc
+  adc #30
+  jsr heal_hp
+  jsr refresh_status
+  jsr bpause
+  rts
+@scan2:
+  jsr show_scan
+  lda #$FF
+  sta tech_none                  ; scan doesn't cost a turn
+  rts
+@cancel:
+  lda #$FF
+  sta tech_none
+  rts
+
+do_scan:
+  jsr show_scan
+  rts
+
+show_scan:
+  lda #1
+  sta scanned
+  jsr clear_msg
+  lda #<txt_scan
+  sta p0
+  lda #>txt_scan
+  sta p0+1
+  jsr msg_line1
+  lda ename
+  sta p0
+  lda ename+1
+  sta p0+1
+  ldx #2
+  ldy #24
+  jsr win_print
+  lda #<txt_hpc
+  sta p0
+  lda #>txt_hpc
+  sta p0+1
+  ldx #16
+  ldy #24
+  jsr win_print
+  lda ehp
+  sta num_lo
+  lda #0
+  sta num_hi
+  ldx #20
+  ldy #24
+  jsr print_num
+  jsr bpause
+  rts
+
+do_item:
+  ; list consumables with count>0
+  jsr draw_cmd_box
+  lda #0
+  sta btmp
+  sta bi
+@bl:
+  ldx bi
+  lda items,x
+  beq @sk
+  lda btmp
+  asl
+  clc
+  adc #2
+  tay
+  ldx bi
+  lda item_name_l,x
+  sta p0
+  lda item_name_h,x
+  sta p0+1
+  ldx #23
+  jsr win_print
+  ldx btmp
+  lda bi
+  sta tech_map,x
+  inc btmp
+@sk:
+  inc bi
+  lda bi
+  cmp #4
+  bne @bl
+  lda btmp
+  bne :+
+  jsr clear_msg
+  lda #<txt_noitem
+  sta p0
+  lda #>txt_noitem
+  sta p0+1
+  jsr msg_line1
+  jsr bpause
+  lda #$FF
+  sta tech_none
+  rts
+:
+  lda #22
+  sta mn_col
+  lda #2
+  sta mn_row
+  lda #2
+  sta mn_step
+  lda btmp
+  sta mn_count
+  lda #0
+  sta mn_cur
+  jsr menu_run
+  cmp #$FF
+  beq @cancel
+  tax
+  lda tech_map,x
+  sta btmp                      ; item id
+  tax
+  dec items,x
+  lda #SFX_ITEM
+  jsr sfx_play
+  jsr use_item_effect
+  rts
+@cancel:
+  lda #$FF
+  sta tech_none
+  rts
+
+; btmp = item id
+use_item_effect:
+  lda btmp
+  beq @repair
+  cmp #1
+  beq @power
+  cmp #2
+  beq @patch
+  ; purge charge -> damage enemy
+  jsr clear_msg
+  lda #<txt_purge
+  sta p0
+  lda #>txt_purge
+  sta p0+1
+  jsr msg_line1
+  lda #35
+  sta btmp
+  lda #0
+  jsr damage_calc
+  jmp hurt_enemy
+@repair:
+  lda #20
+  jsr rand_mod
+  clc
+  adc #40
+  jsr heal_hp
+  jmp @done
+@power:
+  lda #10
+  jsr rand_mod
+  clc
+  adc #20
+  clc
+  adc en
+  cmp maxen
+  bcc :+
+  lda maxen
+:
+  sta en
+  jmp @done
+@patch:
+  lda maxhp
+  sta hp
+@done:
+  jsr refresh_status
+  jsr clear_msg
+  lda #<txt_useit
+  sta p0
+  lda #>txt_useit
+  sta p0+1
+  jsr msg_line1
+  jsr bpause
+  rts
+
+do_flee:
+  lda #0
+  sta flee_ok
+  lda eid
+  cmp #6                        ; boss can't flee
+  beq @no
+  jsr rng_step
+  lda rng
+  cmp #144
+  bcc @no
+  lda #1
+  sta flee_ok
+  jsr clear_msg
+  lda #<txt_fled
+  sta p0
+  lda #>txt_fled
+  sta p0+1
+  jsr msg_line1
+  jsr bpause
+  rts
+@no:
+  jsr clear_msg
+  lda #<txt_noflee
+  sta p0
+  lda #>txt_noflee
+  sta p0+1
+  jsr msg_line1
+  jsr bpause
+  rts
+
+; ---------------------------------------------------- damage helpers
+; btmp = attacker power, A = defender def -> dmg in dmg, applied by caller
+damage_calc:
+  lsr                           ; def/2
+  sta p2
+  lda btmp
+  sec
+  sbc p2
+  bcs :+
+  lda #1
+:
+  cmp #1
+  bcs :+
+  lda #1
+:
+  sta dmg
+  ; + random(power/4 + 1)
+  lda btmp
+  lsr
+  lsr
+  clc
+  adc #1
+  jsr rand_mod
+  clc
+  adc dmg
+  sta dmg
+  rts
+
+hurt_enemy:
+  jsr clear_msg
+  lda ename
+  sta p0
+  lda ename+1
+  sta p0+1
+  jsr msg_line1
+  lda #<txt_takes
+  sta p0
+  lda #>txt_takes
+  sta p0+1
+  ldx #2
+  ldy #24
+  jsr win_print
   lda dmg
   sta num_lo
   lda #0
   sta num_hi
-  jsr dput_num
-  lda #<txt_b_dmg
-  sta p0
-  lda #>txt_b_dmg
-  sta p0+1
-  jsr dput_str
-  jsr bpause
+  ldx #14
+  ldy #24
+  jsr print_num
+  ; apply
   lda ehp
   sec
   sbc dmg
-  sta ehp
-  bcc @dead
-  beq @dead
-  rts
-@dead:
+  bcs :+
   lda #0
+:
   sta ehp
-  jsr erase_enemy
-  lda #SFX_HURT
-  jsr sfx_play
-  jsr bclear
-  jsr put_ename
-  lda #<txt_b_defeated
-  sta p0
-  lda #>txt_b_defeated
-  sta p0+1
-  jsr dput_str
-  jsr bpause
-  lda #1
-  sta bres
-  rts
-
-; ---------------------------------------------------------------- spell menu
-spell_menu:
-  jsr cmd_items_spell
-  lda #21
-  sta mn_cx
-  lda #2
-  sta mn_cy
-  sta mn_st
-  lda #3
-  sta curmax
-  jsr menu_run
-  pha
-  jsr cmd_items_fight
-  pla
-  cmp #$FF
-  bne @pick
-  lda #4
-  sta bres                      ; cancelled: back to command menu
-  rts
-@pick:
-  cmp #0
-  bne :+
-  jmp @heal
-:
-  cmp #1
-  bne :+
-  jmp @scorch
-:
-  ; storm
-  lda lvl
-  cmp #8
-  bcs :+
-  jmp @unknown
-:
-  lda mp
-  cmp #9
-  bcs :+
-  jmp @nomp
-:
-  sec
-  sbc #9
-  sta mp
-  jsr update_status
-  lda #SFX_SPELL
-  jsr sfx_play
-  jsr bclear
-  lda #<txt_b_storm
-  sta p0
-  lda #>txt_b_storm
-  sta p0+1
-  jsr dput_str
-  jsr bpause_s
-  jsr flash_enemy
-  lda #12
-  jsr rand_mod
-  clc
-  adc #24
-  sta dmg
-  jmp hurt_enemy
-@heal:
-  lda lvl
-  cmp #3
-  bcc @unknown
-  lda mp
-  cmp #4
-  bcc @nomp
-  sec
-  sbc #4
-  sta mp
-  jsr heal_amount
-  jsr update_status
-  lda #SFX_SPELL
-  jsr sfx_play
-  jsr bclear
-  lda #<txt_b_heal
-  sta p0
-  lda #>txt_b_heal
-  sta p0+1
-  jsr dput_str
-  jmp bpause
-@scorch:
-  lda lvl
-  cmp #5
-  bcc @unknown
-  lda mp
-  cmp #5
-  bcc @nomp
-  sec
-  sbc #5
-  sta mp
-  jsr update_status
-  lda #SFX_SPELL
-  jsr sfx_play
-  jsr bclear
-  lda #<txt_b_scorch
-  sta p0
-  lda #>txt_b_scorch
-  sta p0+1
-  jsr dput_str
-  jsr bpause_s
-  jsr flash_enemy
-  lda #8
-  jsr rand_mod
-  clc
-  adc #14
-  sta dmg
-  jmp hurt_enemy
-@unknown:
-  jsr bclear
-  lda #<txt_b_unknown
-  sta p0
-  lda #>txt_b_unknown
-  sta p0+1
-  jsr dput_str
-  jsr bpause
-  lda #4
-  sta bres
-  rts
-@nomp:
-  jsr bclear
-  lda #<txt_nomp
-  sta p0
-  lda #>txt_nomp
-  sta p0+1
-  jsr dput_str
-  jsr bpause
-  lda #4
-  sta bres
-  rts
-
-; --------------------------------------------------------------------- items
-use_item:
-  lda herbs
-  bne @use
-  jsr bclear
-  lda #<txt_noherb
-  sta p0
-  lda #>txt_noherb
-  sta p0+1
-  jsr dput_str
-  jsr bpause
-  lda #4
-  sta bres
-  rts
-@use:
-  dec herbs
-  jsr herb_amount
-  jsr update_status
-  lda #SFX_SPELL
-  jsr sfx_play
-  jsr bclear
-  lda #<txt_herbed
-  sta p0
-  lda #>txt_herbed
-  sta p0+1
-  jsr dput_str
-  jmp bpause
-
-; ----------------------------------------------------------------------- run
-try_run:
-  jsr bclear
-  lda #<txt_b_flee
-  sta p0
-  lda #>txt_b_flee
-  sta p0+1
-  jsr dput_str
-  jsr bpause_s
-  lda #160
-  sta t4
-  lda eid
-  cmp #EN_KING
-  bne :+
-  lda #48
-  sta t4
-:
-  jsr rng_step
-  lda rng0
-  cmp t4
-  bcs @fail
-  lda #SFX_STAIR
-  jsr sfx_play
-  jsr bclear
-  lda #<txt_b_fled
-  sta p0
-  lda #>txt_b_fled
-  sta p0+1
-  jsr dput_str
-  jsr bpause
-  lda #2
-  sta bres
-  rts
-@fail:
-  jsr bclear
-  lda #<txt_b_blocked
-  sta p0
-  lda #>txt_b_blocked
-  sta p0+1
-  jsr dput_str
-  jmp bpause
-
-; ---------------------------------------------------------------- enemy turn
-enemy_turn:
-  lda e_sp
-  beq @attack
-  sta t4
-  jsr rng_step
-  lda rng0
-  cmp t4
-  bcs @attack
-  ; fire breath
-  jsr bclear
-  jsr put_ename
-  lda #<txt_b_fire
-  sta p0
-  lda #>txt_b_fire
-  sta p0+1
-  jsr dput_str
-  jsr bpause_s
-  lda #8
-  jsr rand_mod
-  clc
-  adc e_fire
-  sta dmg
-  jmp hurt_player
-@attack:
-  jsr bclear
-  jsr put_ename
-  lda #<txt_b_attacks
-  sta p0
-  lda #>txt_b_attacks
-  sta p0+1
-  jsr dput_str
-  jsr bpause_s
-  lda e_atk
-  sta t0
-  jsr calc_pdef
-  sta t1
-  jsr calc_damage
-  sta dmg
-  ; fall through
-hurt_player:
-  lda #SFX_HURT
-  jsr sfx_play
   lda #14
-  sta shake
+  sta shake_ct
+  jsr bpause
+  rts
+
+; A = heal amount, cap at maxhp
+heal_hp:
+  clc
+  adc hp
+  bcs @cap
+  cmp maxhp
+  bcc @ok
+@cap:
+  lda maxhp
+@ok:
+  sta hp
+  rts
+
+; ---------------------------------------------------- enemy turn
+enemy_turn:
+  ; special attack?
+  lda e_ai
+  beq @basic
+  jsr rng_step
+  lda rng
+  cmp e_ai
+  bcs @basic
+  ; special: heavier hit
+  jsr clear_msg
+  lda ename
+  sta p0
+  lda ename+1
+  sta p0+1
+  jsr msg_line1
+  lda #<txt_surge
+  sta p0
+  lda #>txt_surge
+  sta p0+1
+  ldx #2
+  ldy #24
+  jsr win_print
+  lda e_spec
+  sta btmp
+  lda #6
+  jsr rand_mod
+  clc
+  adc btmp
+  sta dmg
+  jmp @apply
+@basic:
+  jsr clear_msg
+  lda ename
+  sta p0
+  lda ename+1
+  sta p0+1
+  jsr msg_line1
+  lda #<txt_strikes
+  sta p0
+  lda #>txt_strikes
+  sta p0+1
+  ldx #2
+  ldy #24
+  jsr win_print
+  lda e_atk
+  sta btmp
+  jsr calc_def
+  jsr damage_calc
+@apply:
+  lda #SFX_HURT
+  jsr sfx_play
   lda hp
   sec
   sbc dmg
-  sta hp
-  bcc @dead
-  beq @dead
-  jsr update_status
-  jsr bclear
-  lda #<txt_b_youtake
-  sta p0
-  lda #>txt_b_youtake
-  sta p0+1
-  jsr dput_str
-  lda dmg
-  sta num_lo
+  bcs :+
   lda #0
-  sta num_hi
-  jsr dput_num
-  lda #<txt_b_dmg
-  sta p0
-  lda #>txt_b_dmg
-  sta p0+1
-  jsr dput_str
-  jmp bpause
-@dead:
-  lda #0
+:
   sta hp
-  jsr update_status
-  jmp player_death
+  jsr refresh_status
+  jsr bpause
+  rts
 
-; ------------------------------------------------------------------- victory
-victory:
+; ---------------------------------------------------- victory / death
+do_victory:
   lda #MUS_NONE
   jsr music_play
   lda #SFX_FANFARE
   jsr sfx_play
-  jsr bclear
-  lda #<txt_b_victory
+  jsr clear_msg
+  lda #<txt_down
   sta p0
-  lda #>txt_b_victory
+  lda #>txt_down
   sta p0+1
-  jsr dput_str
+  jsr msg_line1
+  jsr bpause
+  jsr clear_msg
+  lda #<txt_gain
+  sta p0
+  lda #>txt_gain
+  sta p0+1
+  jsr msg_line1
   lda e_xp
   sta num_lo
   lda #0
   sta num_hi
-  jsr dput_num
-  lda #<txt_b_xpand
+  ldx #10
+  ldy #23
+  jsr print_num
+  lda #<txt_xpc
   sta p0
-  lda #>txt_b_xpand
+  lda #>txt_xpc
   sta p0+1
-  jsr dput_str
-  lda e_gold
+  ldx #16
+  ldy #23
+  jsr win_print
+  lda e_cr
   sta num_lo
   lda #0
   sta num_hi
-  jsr dput_num
-  lda #<txt_b_goldend
-  sta p0
-  lda #>txt_b_goldend
-  sta p0+1
-  jsr dput_str
-  jsr bpause
-  ; rewards
+  ldx #20
+  ldy #23
+  jsr print_num
+  ; award
   lda xp
   clc
   adc e_xp
@@ -616,597 +954,188 @@ victory:
   bcc :+
   inc xp+1
 :
-  lda gold
+  lda credits
   clc
-  adc e_gold
-  sta gold
+  adc e_cr
+  sta credits
   bcc :+
-  inc gold+1
+  inc credits+1
 :
-  ; level ups
-@lvlchk:
+  jsr bpause
+  jsr check_levelup
+  rts
+
+check_levelup:
   lda lvl
-  cmp #MAX_LEVEL
-  bcs @lvldone
+  cmp #15
+  bcs @done
   ldx lvl
   dex
   txa
   asl
   tax
   lda xp+1
-  cmp next_xp+1,x
-  bcc @lvldone
+  cmp xp_next+1,x
+  bcc @done
   bne @up
   lda xp
-  cmp next_xp,x
-  bcc @lvldone
+  cmp xp_next,x
+  bcc @done
 @up:
   inc lvl
   jsr apply_level
-  jsr update_status
+  lda maxhp
+  sta hp
+  lda maxen
+  sta en
+  jsr refresh_status
   lda #SFX_FANFARE
   jsr sfx_play
-  jsr bclear
-  lda #<txt_b_level
+  jsr clear_msg
+  lda #<txt_levelup
   sta p0
-  lda #>txt_b_level
+  lda #>txt_levelup
   sta p0+1
-  jsr dput_str
+  jsr msg_line1
   lda lvl
   sta num_lo
   lda #0
   sta num_hi
-  jsr dput_num
-  lda #CH_BANG
-  jsr dput_ch
+  ldx #18
+  ldy #23
+  jsr print_num
   jsr bpause
-  ; new spells?
-  lda lvl
-  cmp #3
-  beq @sheal
-  cmp #5
-  beq @sscorch
-  cmp #8
-  beq @sstorm
-  jmp @lvlchk
-@sheal:
-  lda #<txt_l_heal
-  sta p0
-  lda #>txt_l_heal
-  sta p0+1
-  jmp @stell
-@sscorch:
-  lda #<txt_l_scorch
-  sta p0
-  lda #>txt_l_scorch
-  sta p0+1
-  jmp @stell
-@sstorm:
-  lda #<txt_l_storm
-  sta p0
-  lda #>txt_l_storm
-  sta p0+1
-@stell:
-  jsr bclear
-  jsr dput_str
-  jsr bpause
-  jmp @lvlchk
-@lvldone:
-  lda #0
-  sta dopen_f
-  lda eid
-  cmp #EN_KING
-  bne @plain
-  lda sflags
-  ora #SF_BOSS
-  sta sflags
-  jmp ending
-@plain:
+  jsr learn_check
+  jmp check_levelup
+@done:
   rts
 
-; -------------------------------------------------------------------- death
-player_death:
-  jsr music_stop
-  jsr bclear
-  lda #<txt_b_fallen
+; learn techs whose level == current level (skip already-known)
+learn_check:
+  lda #0
+  sta bi
+@l:
+  ldx bi
+  lda tech_lvl,x
+  cmp lvl
+  bne @nx
+  lda skills
+  and pow2,x
+  bne @nx                       ; already known
+  lda skills
+  ora pow2,x
+  sta skills
+  jsr clear_msg
+  lda #<txt_learn
   sta p0
-  lda #>txt_b_fallen
+  lda #>txt_learn
   sta p0+1
-  jsr dput_str
+  jsr msg_line1
+  ldx bi
+  lda tech_name_l,x
+  sta p0
+  lda tech_name_h,x
+  sta p0+1
+  ldx #14
+  ldy #23
+  jsr win_print
+  jsr bpause
+@nx:
+  inc bi
+  lda bi
+  cmp #5
+  bne @l
+  rts
+
+do_death:
+  lda #MUS_NONE
+  jsr music_play
+  jsr clear_msg
+  lda #<txt_offline
+  sta p0
+  lda #>txt_offline
+  sta p0+1
+  jsr msg_line1
   jsr bpause
   jsr bpause
-  ; half your gold stays on the ash
-  lsr gold+1
-  ror gold
+  ; revive: half credits, full hp
+  lsr credits+1
+  ror credits
   lda maxhp
   sta hp
-  lda maxmp
-  sta mp
-  lda #0
-  sta dopen_f
-  sta shake
-  lda #SCR_VILLAGE
-  sta screen
-  lda #7
-  sta px
-  lda #3
-  sta py
-  lda #0
-  sta pdir
-  jsr load_screen
-  lda #<txt_revive
-  sta p0
-  lda #>txt_revive
-  sta p0+1
-  jsr say
-  lda #3
-  sta bres
+  lda maxen
+  sta en
   rts
 
-; ------------------------------------------------------------------ the boss
-boss_event:
-  lda #<txt_boss
-  sta p0
-  lda #>txt_boss
-  sta p0+1
-  jsr say
-  lda #EN_KING
-  jsr battle
-  jmp load_screen
-
-; -------------------------------------------------------------------- ending
-ending:
-  jsr screen_off
-  jsr oam_clear
-  jsr clear_nt
-  lda #MUS_END
-  jsr music_play
-  ldx #0
-@lines:
-  txa
-  pha
-  asl
-  tay
-  lda end_lines,y
-  sta p0
-  lda end_lines+1,y
-  sta p0+1
-  pla
-  pha
-  tax
-  lda end_cols,x
-  pha
-  lda end_rows,x
-  tay
-  pla
-  tax
-  jsr blank_print
-  pla
-  tax
-  inx
-  cpx #END_NLINES
-  bne @lines
-  jsr screen_on
-@forever:
-  jsr wait_frame
-  jmp @forever
-
-; ------------------------------------------------------------ battle helpers
-put_ename:
-  lda ename
-  sta p0
-  lda ename+1
-  sta p0+1
-  jmp dput_str
-
-bclear:
-  jmp dclear
-
-; long pause (A skips)
+; ---------------------------------------------------- pause (A or timeout)
 bpause:
-  lda #48
-  sta cnt
-  bne bp_go
-; short pause
-bpause_s:
-  lda #22
-  sta cnt
-bp_go:
+  lda #55
+  sta btmp
   jsr read_pad
 @l:
-  jsr wait_frame
+  jsr wait_nmi
   jsr read_pad
   lda pad_new
   and #BTN_A
   bne @done
-  dec cnt
+  dec btmp
   bne @l
 @done:
   rts
 
-; damage roll: t0 attack vs t1 defense
-calc_damage:
-  lda t1
-  lsr
-  sta t1
-  lda t0
-  sec
-  sbc t1
-  bcs :+
-  lda #0
-:
-  cmp #2
-  bcs :+
-  lda #2
-:
-  sta t0
-  lsr
-  sta t1                        ; base/2
-  lda t0
-  lsr
-  lsr
-  clc
-  adc #1                        ; base/4 + 1
-  jsr rand_mod
-  clc
-  adc t1
-  rts
+.segment "ZEROPAGE"
+flee_ok:  .res 1
+tech_none:.res 1
+shake_ct: .res 1
+bi:       .res 1
+eidx:     .res 1
+.exportzp shake_ct
 
-; white-out the enemy palette for a moment
-flash_enemy:
-  lda #$3F
-  sta t0
-  lda #$05
-  sta t1
-  lda #$30
-  sta rowbuf
-  sta rowbuf+1
-  sta rowbuf+2
-  lda #3
-  jsr queue_row
-  ldx #6
-@w:
-  jsr wait_frame
-  dex
-  bne @w
-  lda eid
-  asl
-  asl
-  asl
-  asl
-  tax
-  lda enemy_tbl+13,x
-  sta rowbuf
-  lda enemy_tbl+14,x
-  sta rowbuf+1
-  lda enemy_tbl+15,x
-  sta rowbuf+2
-  lda #$3F
-  sta t0
-  lda #$05
-  sta t1
-  lda #3
-  jsr queue_row
-  jmp wait_frame
+.segment "BSS"
+tech_map: .res 5
+palbuf:   .res 32
 
-erase_enemy:
-  lda #0
-  sta t5
-@row:
-  ldx #0
-  lda #0
-@f:
-  sta rowbuf,x
-  inx
-  cpx e_w
-  bne @f
-  lda brow
-  clc
-  adc t5
-  tay
-  lda bcol
-  jsr tile_addr
-  lda e_w
-  jsr queue_row
-  jsr wait_frame
-  inc t5
-  lda t5
-  cmp e_h
-  bne @row
-  rts
+.segment "RODATA"
+pow2: .byte 1,2,4,8,16
+cmd_lo: .byte <c_atk,<c_tech,<c_item,<c_scan,<c_flee
+cmd_hi: .byte >c_atk,>c_tech,>c_item,>c_scan,>c_flee
+c_atk:  .byte "ATTACK", TXT_END
+c_tech: .byte "TECH", TXT_END
+c_item: .byte "ITEM", TXT_END
+c_scan: .byte "SCAN", TXT_END
+c_flee: .byte "FLEE", TXT_END
 
-; status window values (buffered)
-update_status:
-  lda lvl
-  ldy #2
-  ldx #0
-  jsr stat_put
-  lda hp
-  ldy #4
-  ldx #3
-  jsr stat_put
-  lda mp
-  ldy #6
-  ldx #6
-  ; fall through
-; A = value, Y = window row, X = label offset into stat_labels
-stat_put:
-  sta t0
-  sty t4
-  lda stat_labels,x
-  sta rowbuf
-  lda stat_labels+1,x
-  sta rowbuf+1
-  lda stat_labels+2,x
-  sta rowbuf+2
-  lda #0
-  sta t1
-  jsr bin_to_dec
-  lda decbuf+2
-  bne @h
-  lda #0
-  beq @hs
-@h:
-  clc
-  adc #CH_0
-@hs:
-  sta rowbuf+3
-  lda decbuf+3
-  bne @t
-  lda decbuf+2
-  bne @t
-  lda #0
-  beq @ts
-@t:
-  lda decbuf+3
-  clc
-  adc #CH_0
-@ts:
-  sta rowbuf+4
-  lda decbuf+4
-  clc
-  adc #CH_0
-  sta rowbuf+5
-  ldy t4
-  lda #2
-  jsr tile_addr
-  lda #6
-  jmp queue_row
+txt_lv: .byte "LV", TXT_END
+txt_hp: .byte "HP", TXT_END
+txt_en: .byte "EN", TXT_END
+txt_appears: .byte "INTERCEPTS AXIOM.", TXT_END
+txt_youhit:  .byte "AXIOM STRIKES.", TXT_END
+txt_takes:   .byte "-", TXT_END
+txt_scan:    .byte "SCAN COMPLETE:", TXT_END
+txt_hpc:     .byte "HP", TXT_END
+txt_repair:  .byte "REPAIR ROUTINE RUNS.", TXT_END
+txt_purge:   .byte "PURGE CHARGE DETONATES!", TXT_END
+txt_useit:   .byte "SUBSYSTEM RESTORED.", TXT_END
+txt_noen:    .byte "NOT ENOUGH ENERGY.", TXT_END
+txt_noitem:  .byte "NO ITEMS.", TXT_END
+txt_strikes: .byte "LASHES AT AXIOM.", TXT_END
+txt_surge:   .byte "SURGES! CRITICAL!", TXT_END
+txt_down:    .byte "IS DESTROYED.", TXT_END
+txt_gain:    .byte "GET", TXT_END
+txt_xpc:     .byte "XP", TXT_END
+txt_levelup: .byte "AXIOM ADVANCES. LV", TXT_END
+txt_learn:   .byte "LEARNED", TXT_END
+txt_offline: .byte "AXIOM GOES OFFLINE...", TXT_END
+txt_fled:    .byte "AXIOM DISENGAGES.", TXT_END
+txt_noflee:  .byte "CANNOT DISENGAGE!", TXT_END
 
-; ---------------------------------------------------- direct-draw primitives
-; clear nametable 0 + attributes to palette 3
-clear_nt:
-  bit PPUSTATUS
-  lda #$20
-  sta PPUADDR
-  lda #$00
-  sta PPUADDR
-  ldx #0
-  ldy #4
-  lda #0
-@clr:
-  sta PPUDATA
-  inx
-  bne @clr
-  dey
-  bne @clr
-  bit PPUSTATUS
-  lda #$23
-  sta PPUADDR
-  lda #$C0
-  sta PPUADDR
-  ldx #64
-  lda #$FF
-@attr:
-  sta PPUDATA
-  dex
-  bne @attr
-  ; enemy block -> palette 1
-  bit PPUSTATUS
-  lda #$23
-  sta PPUADDR
-  lda #$D3
-  sta PPUADDR
-  lda #$55
-  sta PPUDATA
-  sta PPUDATA
-  bit PPUSTATUS
-  lda #$23
-  sta PPUADDR
-  lda #$DB
-  sta PPUADDR
-  lda #$55
-  sta PPUDATA
-  sta PPUDATA
-  rts
-
-; window at (wx,wy) size ww x wh, drawn directly (rendering off)
-win_blank:
-  lda wy
-  sta t3
-  lda wy
-  clc
-  adc wh
-  sec
-  sbc #1
-  sta t4                        ; bottom row
-@row:
-  ldy t3
-  lda wx
-  jsr tile_addr
-  bit PPUSTATUS
-  lda t0
-  sta PPUADDR
-  lda t1
-  sta PPUADDR
-  ; left edge
-  lda t3
-  cmp wy
-  beq @top
-  cmp t4
-  beq @bot
-  lda #BORD_L
-  sta PPUDATA
-  ldx ww
-  dex
-  dex
-  lda #0
-@mf:
-  sta PPUDATA
-  dex
-  bne @mf
-  lda #BORD_R
-  sta PPUDATA
-  jmp @next
-@top:
-  lda #BORD_TL
-  sta PPUDATA
-  ldx ww
-  dex
-  dex
-  lda #BORD_T
-@tf:
-  sta PPUDATA
-  dex
-  bne @tf
-  lda #BORD_TR
-  sta PPUDATA
-  jmp @next
-@bot:
-  lda #BORD_BL
-  sta PPUDATA
-  ldx ww
-  dex
-  dex
-  lda #BORD_B
-@bf:
-  sta PPUDATA
-  dex
-  bne @bf
-  lda #BORD_BR
-  sta PPUDATA
-@next:
-  inc t3
-  lda t3
-  cmp t4
-  bcc @row
-  beq @row
-  rts
-
-; enemy graphic p0 (t3 wide, t4 tall) at col X row Y — rendering off
-draw_gfx_blank:
-  stx bcol
-  sty brow
-  lda #0
-  sta t5
-@row:
-  lda brow
-  clc
-  adc t5
-  tay
-  lda bcol
-  jsr tile_addr
-  bit PPUSTATUS
-  lda t0
-  sta PPUADDR
-  lda t1
-  sta PPUADDR
-  ldy #0
-@col:
-  lda (p0),y
-  sta PPUDATA
-  iny
-  cpy t3
-  bne @col
-  ; advance p0 by one row
-  lda p0
-  clc
-  adc t3
-  sta p0
-  bcc :+
-  inc p0+1
-:
-  inc t5
-  lda t5
-  cmp t4
-  bne @row
-  rts
-
-; command window contents
-cmd_items_fight:
-  jsr cmd_wipe
-  lda #<txt_c_fight
-  sta p0
-  lda #>txt_c_fight
-  sta p0+1
-  ldx #22
-  ldy #2
-  jsr wput
-  lda #<txt_c_spell
-  sta p0
-  lda #>txt_c_spell
-  sta p0+1
-  ldx #22
-  ldy #4
-  jsr wput
-  lda #<txt_c_item
-  sta p0
-  lda #>txt_c_item
-  sta p0+1
-  ldx #22
-  ldy #6
-  jsr wput
-  lda #<txt_c_run
-  sta p0
-  lda #>txt_c_run
-  sta p0+1
-  ldx #22
-  ldy #8
-  jmp wput
-
-cmd_items_spell:
-  jsr cmd_wipe
-  lda #<txt_c_heal
-  sta p0
-  lda #>txt_c_heal
-  sta p0+1
-  ldx #22
-  ldy #2
-  jsr wput
-  lda #<txt_c_scorch
-  sta p0
-  lda #>txt_c_scorch
-  sta p0+1
-  ldx #22
-  ldy #4
-  jsr wput
-  lda #<txt_c_storm
-  sta p0
-  lda #>txt_c_storm
-  sta p0+1
-  ldx #22
-  ldy #6
-  jmp wput
-
-cmd_wipe:
-  lda #2
-  sta t5
-@l:
-  ldx #0
-  lda #0
-@f:
-  sta rowbuf,x
-  inx
-  cpx #9
-  bne @f
-  ldy t5
-  lda #21
-  jsr tile_addr
-  lda #9
-  jsr queue_row
-  jsr wait_frame
-  inc t5
-  lda t5
-  cmp #9
-  bne @l
-  rts
+bpal:
+  .byte $0F,$00,$10,$20         ; P0 UI/text
+  .byte $0F,$00,$10,$2C         ; P1 enemy (c1,c2,c3 patched at runtime +5,+6,+7)
+  .byte $0F,$06,$16,$27         ; P2
+  .byte $0F,$0C,$1C,$2C         ; P3
+  .byte $0F,$0F,$10,$2C         ; sprite palettes (entry16=$0F keeps backdrop black)
+  .byte $0F,$16,$27,$37
+  .byte $0F,$13,$23,$29
+  .byte $0F,$06,$28,$30
+.segment "CODE"

@@ -40,3 +40,47 @@ spr_NPC_D:
 .export spr_NPC_U
 spr_NPC_U:
   .byte $1D,$1E,$1F,$20
+.export EN_NANITE_gfx
+EN_NANITE_gfx:
+  .byte $72,$73,$74,$75
+  .byte $76,$77,$78,$79
+  .byte $7A,$7B,$7C,$7D
+  .byte $7E,$7F,$80,$81
+.export EN_DRONE_gfx
+EN_DRONE_gfx:
+  .byte $82,$83,$84,$00,$00,$00
+  .byte $85,$86,$87,$88,$00,$00
+  .byte $89,$8A,$8B,$8C,$00,$00
+  .byte $00,$8D,$8E,$00,$00,$00
+.export EN_CRAWLER_gfx
+EN_CRAWLER_gfx:
+  .byte $82,$8F,$90,$91
+  .byte $92,$93,$94,$95
+  .byte $96,$97,$98,$99
+  .byte $9A,$9B,$9C,$9D
+.export EN_HUSK_gfx
+EN_HUSK_gfx:
+  .byte $00,$9E,$9F,$00
+  .byte $A0,$A1,$A2,$91
+  .byte $A3,$A4,$A5,$A6
+  .byte $A7,$A8,$A9,$AA
+.export EN_TURRET_gfx
+EN_TURRET_gfx:
+  .byte $00,$AB,$AC,$00
+  .byte $AD,$AE,$AF,$B0
+  .byte $B1,$B2,$B3,$B4
+  .byte $B5,$B6,$B7,$B8
+.export EN_NODE_gfx
+EN_NODE_gfx:
+  .byte $B9,$BA,$BB,$BC,$00,$00
+  .byte $BD,$BE,$BF,$C0,$BC,$00
+  .byte $C1,$C2,$C3,$C4,$C5,$00
+  .byte $00,$C6,$C7,$C5,$00,$00
+.export EN_WARDEN_gfx
+EN_WARDEN_gfx:
+  .byte $B9,$C8,$C9,$CA,$CB,$CC,$00,$00
+  .byte $BD,$CD,$CE,$CF,$D0,$D1,$D2,$00
+  .byte $D3,$D4,$D5,$D6,$D7,$D8,$D9,$00
+  .byte $DA,$DB,$DC,$DD,$DE,$DF,$00,$00
+  .byte $E0,$E1,$E2,$E3,$E4,$E5,$00,$00
+  .byte $E6,$E7,$E8,$E9,$EA,$EB,$00,$00

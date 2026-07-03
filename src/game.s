@@ -14,7 +14,8 @@
 .import mt_attr_tbl
 .import spr_AX_D0, spr_AX_D1, spr_AX_U0, spr_AX_U1, spr_AX_L0, spr_AX_L1
 .importzp pad_new
-.export main_init
+.import init_player, battle
+.export main_init, redraw_field, center_cam, build_oam
 
 MAPW = 48
 MAPH = 15
@@ -50,6 +51,7 @@ area_map: .res MAPW*MAPH
 .segment "CODE"
 
 main_init:
+  jsr init_player
   jsr ppu_off
   jsr build_map
   lda #<area_map
@@ -89,6 +91,13 @@ field_loop:
   and #BTN_A
   beq :+
   jsr test_dialog
+  jmp @after
+:
+  lda pad_new
+  and #BTN_SELECT
+  beq :+
+  lda #0                         ; test: fight a nanite swarm
+  jsr battle
   jmp @after
 :
   jsr try_move

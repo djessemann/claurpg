@@ -537,7 +537,7 @@ vq_send:
   clc
   adc vqlen_z
   adc #6
-  cmp #200
+  cmp #80                       ; keep per-vblank writes within safe budget
   bcc @ok
   jsr wait_nmi
 @ok:

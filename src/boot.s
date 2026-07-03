@@ -29,7 +29,7 @@ oam_top:    .res 1             ; next free OAM slot (bytes)
 .export OAM
 OAM:        .res 256
 
-.exportzp p0, p1, p2, tmp, pad, pad_new, pad_prev, frame_cnt
+.exportzp p0, p1, p2, tmp, pad, pad_new, pad_prev, frame_cnt, rng
 .exportzp scrollX, scrollXhi, scrollY, ppumask_sh, oam_top, render_on
 
 .segment "BSS"

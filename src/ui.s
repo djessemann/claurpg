@@ -9,7 +9,7 @@
 .import wait_nmi, vq_send, linebuf, rowbase
 .import mt_tl_tbl, mt_tr_tbl, mt_bl_tbl, mt_br_tbl
 .export scr_addr, queue_hstrip, stage_maprow, restore_rows_ui
-.export win_box, win_print, win_clearline, print_num, num_lo, num_hi
+.export win_box, win_print, win_clearline, print_num, num_lo, num_hi, win_putc
 .exportzp uarg
 
 .segment "ZEROPAGE"
@@ -356,9 +356,17 @@ win_print:
 @skip:
   rts
 
+; put single tile A at screen col X, row Y
+win_putc:
+  sta linebuf
+  lda #1
+  jmp queue_hstrip
+
 ; clear W tiles at col X row Y
 win_clearline:
   sta hlen
+  stx nstart                    ; save col
+  sty ndig                      ; save row
   ldy #0
   lda #0
 @l:
@@ -367,6 +375,8 @@ win_clearline:
   cpy hlen
   bne @l
   lda hlen
+  ldx nstart
+  ldy ndig
   jmp queue_hstrip
 
 ; print num_lo/num_hi (16-bit) at screen col X row Y, W digits (leading spaces)
