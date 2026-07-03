@@ -1,10 +1,17 @@
 #!/bin/sh
-# EMBERFALL build: generators -> ca65 -> ld65 -> build/emberfall.nes
+# EREBUS build: generators -> ca65 -> ld65 -> build/erebus.nes
 set -e
 cd "$(dirname "$0")"
 python3 tools/gfx.py
-python3 tools/maps.py
-python3 tools/music.py
-ca65 -o build/emberfall.o -I src src/emberfall.s
-ld65 -C rom.cfg -o build/emberfall.nes build/emberfall.o
-echo "built build/emberfall.nes ($(wc -c < build/emberfall.nes) bytes)"
+[ -f tools/maps.py ] && python3 tools/maps.py || true
+[ -f tools/music.py ] && python3 tools/music.py || true
+mkdir -p build
+ca65 -g -o build/erebus.o -I src src/erebus.s
+ca65 -g -o build/boot.o   -I src src/boot.s
+ca65 -g -o build/ppu.o    -I src src/ppu.s
+ca65 -g -o build/game.o   -I src src/game.s
+ca65 -g -o build/sound.o  -I src src/sound.s
+ca65 -g -o build/gfxdata.o -I src src/gen/gfxdata.s
+ld65 -C rom.cfg -o build/erebus.nes --dbgfile build/erebus.dbg \
+     build/erebus.o build/boot.o build/ppu.o build/game.o build/sound.o build/gfxdata.o
+echo "built build/erebus.nes ($(wc -c < build/erebus.nes) bytes)"

@@ -2,6 +2,7 @@
 ; boot.s — MMC1 init, reset, NMI, frame sync, VRAM queue, input, RNG, banking
 ; ============================================================================
 .include "defs.inc"
+.import main, sound_tick
 
 .segment "ZEROPAGE"
 nmi_ready:  .res 1
@@ -25,11 +26,16 @@ ppumask_sh: .res 1             ; shadow of PPUMASK to apply each frame
 oam_top:    .res 1             ; next free OAM slot (bytes)
 
 .segment "OAMSEG"
+.export OAM
 OAM:        .res 256
+
+.exportzp p0, p1, p2, tmp, pad, pad_new, pad_prev, frame_cnt
+.exportzp scrollX, scrollXhi, scrollY, ppumask_sh, oam_top, render_on
 
 .segment "BSS"
 ; VRAM update queue: stream of [len, ctrl, hi, lo, data...] ; 0 len terminates.
 ;   ctrl bit0 = increment mode (0:+1 across, 1:+32 down)
+.export vq, vq_len
 vq:         .res 220
 vq_len:     .res 1             ; bytes used in vq
 
