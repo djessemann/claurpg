@@ -5,3 +5,5 @@ build/*.dbg
 test/node_modules
 build/labels.txt
 build/map.txt
+__pycache__/
+*.pyc
