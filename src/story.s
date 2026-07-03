@@ -4,10 +4,10 @@
 .include "defs.inc"
 .include "gen/tiles.inc"
 
-.importzp p0, p1, p2, pad, pad_new
+.importzp p0, p1, p2, pad, pad_new, scrollX, scrollXhi, scrollY
 .importzp uarg, num_lo, num_hi
 .import wait_nmi, read_pad, ppu_off, ppu_on, clear_nt, load_palette
-.import win_box, win_print, win_putc, win_clearline, print_num, restore_rows_ui
+.import win_box, win_print, win_putc, win_clearline, print_num, restore_rows_ui, OAM
 .import menu_run
 .importzp mn_col, mn_row, mn_step, mn_count, mn_cur
 .import sfx_play, music_play
@@ -649,7 +649,20 @@ fm_skills:
 ; ============================ ending ============================
 run_ending:
   jsr ppu_off
+  lda #0
+  sta scrollX
+  sta scrollXhi
+  sta scrollY
+  ; hide all sprites
+  ldx #0
+  lda #$F0
+@oc:
+  sta OAM,x
+  inx
+  bne @oc
   lda #$20
+  jsr clear_nt
+  lda #$24
   jsr clear_nt
   lda #<end_pal
   sta p0
@@ -764,8 +777,8 @@ end_col: .byte 4, 3, 6, 4, 7, 11
 end_row: .byte 6, 9, 12, 15, 19, 23
 e0: .byte "THE CORE IGNITES.", TXT_END
 e1: .byte "LIGHT FLOODS THE DEAD DECKS.", TXT_END
-e2: .byte "IN THEIR PODS, THE SLEEPERS", TXT_END
-e3: .byte "STIR TOWARD A WARM DAWN.", TXT_END
+e2: .byte "SLEEPERS STIR IN THEIR PODS", TXT_END
+e3: .byte "TOWARD A WARM NEW DAWN.", TXT_END
 e4: .byte "AXIOM KEEPS THE VIGIL.", TXT_END
 e5: .byte "E R E B U S", TXT_END
 end_pal:

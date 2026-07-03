@@ -64,6 +64,7 @@ maxcamxH:  .res 1
 .segment "CODE"
 
 main_init:
+  jsr title_screen
   jsr init_player
   lda #0
   sta cur_area
@@ -168,6 +169,84 @@ load_area:
   jsr draw_area_fb
   jsr build_oam
   jmp ppu_on
+
+; ------------------------------------------------------------- title screen
+title_screen:
+  jsr ppu_off
+  lda #0
+  sta scrollX
+  sta scrollXhi
+  sta scrollY
+  lda #$20
+  jsr clear_nt
+  lda #$24
+  jsr clear_nt
+  ; palette: dark, cyan title, amber
+  lda #<title_pal
+  sta p0
+  lda #>title_pal
+  sta p0+1
+  jsr load_palette
+  jsr ppu_on
+  ; title text
+  lda #<txt_t1
+  sta p0
+  lda #>txt_t1
+  sta p0+1
+  ldx #10
+  ldy #8
+  jsr win_print
+  lda #<txt_t2
+  sta p0
+  lda #>txt_t2
+  sta p0+1
+  ldx #6
+  ldy #12
+  jsr win_print
+  lda #<txt_t3
+  sta p0
+  lda #>txt_t3
+  sta p0+1
+  ldx #9
+  ldy #22
+  jsr win_print
+  lda #<txt_t4
+  sta p0
+  lda #>txt_t4
+  sta p0+1
+  ldx #7
+  ldy #26
+  jsr win_print
+@wait:
+  jsr wait_nmi
+  jsr read_pad
+  ; blink PRESS START (rows 22)
+  lda frame_cnt
+  and #$10
+  bne @show
+  lda #11
+  ldx #10
+  ldy #22
+  jsr win_clearline
+  jmp @chk
+@show:
+  lda #<txt_t3
+  sta p0
+  lda #>txt_t3
+  sta p0+1
+  ldx #10
+  ldy #22
+  jsr win_print
+@chk:
+  lda pad_new
+  and #BTN_START
+  beq @wait
+  ; seed rng from timing
+  lda frame_cnt
+  eor rng
+  ora #1
+  sta rng
+  rts
 
 ; col_first = worldX>>4 clamped to [0, area_w-32]; col_last = col_first+31
 recalc_cols:
@@ -1022,6 +1101,13 @@ area_w:       .res 1
 .segment "RODATA"
 dx_tbl: .byte 0, 0, 1, $FF
 dy_tbl: .byte 1, $FF, 0, 0
+txt_t1: .byte "E R E B U S", TXT_END
+txt_t2: .byte "THE WAKING OF AXIOM", TXT_END
+txt_t3: .byte "PRESS START", TXT_END
+txt_t4: .byte "MMXXVI DEEP SIGNAL", TXT_END
+title_pal:
+  .byte $0F,$0C,$28,$30, $0F,$0C,$1C,$2C, $0F,$16,$27,$37, $0F,$1A,$2A,$3A
+  .byte $0F,$0F,$10,$2C, $0F,$16,$27,$37, $0F,$13,$23,$29, $0F,$06,$28,$30
 
 ; four field palette sets (32 bytes each): metal, hub-safe, bloom, hazard
 field_pal:
