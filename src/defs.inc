@@ -56,6 +56,21 @@ BTN_RIGHT  = $01
 
 CURSOR    = $2C                ; '>' glyph tile
 
+; dialog handler ids
+DLG_WAKE=0
+DLG_VENDOR=1
+DLG_REPAIR=2
+DLG_ENGINEER=3
+DLG_MEDIC=4
+DLG_SURVIVOR=5
+DLG_LOST=6
+DLG_TERMINAL=$FF
+
+; story flags (sflags bit positions)
+SF_KEYCARD=$01
+SF_BOSS=$02
+SF_WOKE=$04
+
 ; text control codes (never collide with glyph tiles $00-$3F)
 TXT_END  = $F0
 TXT_PAGE = $F1

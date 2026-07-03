@@ -3,7 +3,7 @@
 set -e
 cd "$(dirname "$0")"
 python3 tools/gfx.py
-[ -f tools/maps.py ] && python3 tools/maps.py || true
+python3 tools/maps.py
 [ -f tools/music.py ] && python3 tools/music.py || true
 mkdir -p build
 ca65 -g -o build/erebus.o -I src src/erebus.s
@@ -14,8 +14,10 @@ ca65 -g -o build/game.o   -I src src/game.s
 ca65 -g -o build/menu.o   -I src src/menu.s
 ca65 -g -o build/battle.o -I src src/battle.s
 ca65 -g -o build/data.o   -I src src/data.s
+ca65 -g -o build/story.o  -I src src/story.s
+ca65 -g -o build/mapdata.o -I src src/gen/mapdata.s
 ca65 -g -o build/sound.o  -I src src/sound.s
 ca65 -g -o build/gfxdata.o -I src src/gen/gfxdata.s
 ld65 -C rom.cfg -o build/erebus.nes --dbgfile build/erebus.dbg \
-     build/erebus.o build/boot.o build/ppu.o build/game.o build/ui.o build/menu.o build/battle.o build/data.o build/sound.o build/gfxdata.o
+     build/erebus.o build/boot.o build/ppu.o build/game.o build/ui.o build/menu.o build/battle.o build/data.o build/story.o build/mapdata.o build/sound.o build/gfxdata.o
 echo "built build/erebus.nes ($(wc -c < build/erebus.nes) bytes)"

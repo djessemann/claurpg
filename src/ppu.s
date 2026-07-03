@@ -6,7 +6,7 @@
 .importzp p0, p1, p2
 .import wait_nmi, vq, vq_len
 .export load_palette, draw_screen, clear_nt, vq_send, linebuf
-.export addr_row, rowbase, draw_col, draw_col_fb
+.export addr_row, rowbase, draw_col, draw_col_fb, draw_attr_col
 .exportzp colc, mcol0, vaddr_hi, vaddr_lo
 .export _mt_tl, _mt_tr, _mt_bl, _mt_br, _mt_attr
 
@@ -314,9 +314,8 @@ draw_col:
   sta vaddr_lo
   lda #30
   ldx #1
-  jsr vq_send
-  ; ---- attribute cell column ----
-  jmp draw_attr_col
+  jmp vq_send
+  ; (attributes handled separately at pair-completion — see draw_attr_col)
 
 ; p2 walks down map column 'colc'; stage tl/bl per row into linebuf
 stage_col0:
