@@ -94,18 +94,18 @@ def ow_screen(sx, sy):
 # ------------------------------------------------------------------ interiors
 VILLAGE = """
 TTTTTTTTTTTTTTTT
-T..ssssssssss..T
-T..sbbbbbbbbs..T
-T..sbbbbbbbbs..T
-T..ssssbbssss..T
+T..RRRR..RRRR..T
+T..RRRR..RRRR..T
+T..RDRR..RRDR..T
 T..............T
-T.RRRR....RRRR.T
-T.bbbb....bbbb.T
-T.nnnn....nnnn.T
+T......hh......T
+T......hh......T
 T..............T
-T...*......*...T
+T..*.......*...T
 T..............T
-TT....X.......TT
+T..............T
+T..............T
+T.....X........T
 TTTTTTT==TTTTTTT
 TTTTTTT==TTTTTTT
 """.split()
@@ -183,12 +183,12 @@ flags = [1] * 9 + [0] * 4     # bit0 = overworld edge-transitions
 
 # NPCs: (screen, x, y, sprite, palette, dialog)
 NPCS = [
-    (9,  7,  2, "SPR_NELDER", 2, "DLG_ELDER"),
-    (9,  8,  5, "SPR_NGUARD", 3, "DLG_GUARD"),
-    (9,  2,  7, "SPR_NKEEP",  1, "DLG_SHOP"),
-    (9, 12,  7, "SPR_NKEEP",  2, "DLG_INN"),
-    (9,  4, 10, "SPR_NWOMAN", 1, "DLG_WOMAN"),
-    (9, 11, 10, "SPR_NMAN",   3, "DLG_MAN"),
+    (9,  7,  7, "SPR_NELDER", 2, "DLG_ELDER"),
+    (9,  8,  9, "SPR_NGUARD", 3, "DLG_GUARD"),
+    (9,  4,  4, "SPR_NKEEP",  1, "DLG_SHOP"),
+    (9, 11,  4, "SPR_NKEEP",  2, "DLG_INN"),
+    (9,  3, 10, "SPR_NWOMAN", 1, "DLG_WOMAN"),
+    (9, 12, 10, "SPR_NMAN",   3, "DLG_MAN"),
     (6,  7,  8, "SPR_NSAGE",  2, "DLG_SAGE"),
 ]
 
