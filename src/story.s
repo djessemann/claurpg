@@ -265,7 +265,7 @@ vendor_menu:
   sta p0
   lda ware_name_h,x
   sta p0+1
-  ldx #6
+  ldx #8
   jsr win_print
   ldx di
   lda ware_price,x
@@ -277,7 +277,7 @@ vendor_menu:
   clc
   adc #6
   tay
-  ldx #22
+  ldx #20
   jsr print_num
   inc di
   lda di

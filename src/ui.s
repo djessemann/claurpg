@@ -387,19 +387,20 @@ print_num:
   sta p2
   lda num_hi
   sta p2+1
-  ; produce up to 5 digits in linebuf2 (reverse)
-  ldx #0
+  ; produce digits in linebuf2 (reverse). div10 clobbers X, so index via ndig.
+  lda #0
+  sta ndig
 @dl:
   jsr div10                     ; p2 /= 10, remainder in A
   clc
   adc #CH_0
-  sta linebuf2,x
-  inx
+  ldy ndig
+  sta linebuf2,y
+  inc ndig
   lda p2
   ora p2+1
   bne @dl
-  ; x = number of digits; emit into linebuf right-aligned (spaces)
-  stx ndig
+   ; ndig = number of digits; emit right-aligned (leading spaces)
   ldy #0
   lda #5
   sec
