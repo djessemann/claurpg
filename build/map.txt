@@ -1,0 +1,38 @@
+Modules list:
+-------------
+emberfall.o:
+    CODE              Offs=000000  Size=001C38  Align=00001  Fill=0000
+    RODATA            Offs=000000  Size=001BA7  Align=00001  Fill=0000
+    BSS               Offs=000000  Size=0001C6  Align=00001  Fill=0000
+    ZEROPAGE          Offs=000000  Size=00006F  Align=00001  Fill=0000
+    HEADER            Offs=000000  Size=000010  Align=00001  Fill=0000
+    VECTORS           Offs=000000  Size=000006  Align=00001  Fill=0000
+    CHARS             Offs=000000  Size=002000  Align=00001  Fill=0000
+
+
+Segment list:
+-------------
+Name                   Start     End    Size  Align
+----------------------------------------------------
+CHARS                 000000  001FFF  002000  00001
+HEADER                000000  00000F  000010  00001
+ZEROPAGE              000000  00006E  00006F  00001
+BSS                   000300  0004C5  0001C6  00001
+CODE                  008000  009C37  001C38  00001
+RODATA                009C38  00B7DE  001BA7  00001
+VECTORS               00FFFA  00FFFF  000006  00001
+
+
+Exports list by name:
+---------------------
+
+
+
+Exports list by value:
+----------------------
+
+
+
+Imports list:
+-------------
+

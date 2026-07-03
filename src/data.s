@@ -32,42 +32,34 @@ enemy_tbl:
   .byte 8, 6, 3, 2, 3, 0, 0
   .word _GFX_SLIME
   .byte GFX_SLIME_W, GFX_SLIME_H, $00, $10, $30
-  .byte 0
   .word en_rat
   .byte 10, 8, 4, 3, 5, 0, 0
   .word _GFX_RAT
   .byte GFX_RAT_W, GFX_RAT_H, $07, $17, $30
-  .byte 0
   .word en_wolf
   .byte 16, 12, 6, 6, 9, 0, 0
   .word _GFX_WOLF
   .byte GFX_WOLF_W, GFX_WOLF_H, $01, $11, $30
-  .byte 0
   .word en_bat
   .byte 13, 11, 4, 5, 7, 0, 0
   .word _GFX_BAT
   .byte GFX_BAT_W, GFX_BAT_H, $03, $13, $30
-  .byte 0
   .word en_wisp
   .byte 18, 15, 8, 10, 14, 56, 8
   .word _GFX_WISP
   .byte GFX_WISP_W, GFX_WISP_H, $16, $27, $30
-  .byte 0
   .word en_golem
   .byte 30, 20, 14, 18, 22, 0, 0
   .word _GFX_GOLEM
   .byte GFX_GOLEM_W, GFX_GOLEM_H, $07, $27, $30
-  .byte 0
   .word en_knight
   .byte 42, 26, 16, 30, 38, 0, 0
   .word _GFX_KNIGHT
   .byte GFX_KNIGHT_W, GFX_KNIGHT_H, $05, $15, $30
-  .byte 0
   .word en_king
   .byte 110, 32, 18, 120, 0, 88, 14
   .word _GFX_KING
   .byte GFX_KING_W, GFX_KING_H, $04, $14, $27
-  .byte 0
 
 en_slime:  .byte "THE ASH SLIME", TXT_END
 en_rat:    .byte "THE CINDER RAT", TXT_END

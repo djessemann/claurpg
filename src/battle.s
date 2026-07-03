@@ -321,16 +321,24 @@ spell_menu:
   rts
 @pick:
   cmp #0
-  beq @heal
+  bne :+
+  jmp @heal
+:
   cmp #1
-  beq @scorch
+  bne :+
+  jmp @scorch
+:
   ; storm
   lda lvl
   cmp #8
-  bcc @unknown
+  bcs :+
+  jmp @unknown
+:
   lda mp
   cmp #9
-  bcc @nomp
+  bcs :+
+  jmp @nomp
+:
   sec
   sbc #9
   sta mp

@@ -524,6 +524,8 @@ step_pixels:
 
 ; ------------------------------------------------------------- step triggers
 on_step:
+  jsr do_warp
+  bcs @warped
   lda py
   asl
   asl
@@ -535,10 +537,6 @@ on_step:
   ldx maprm,y
   lda _mt_attr,x
   sta t3
-  and #MTF_WARP
-  beq @nowarp
-  jmp do_warp
-@nowarp:
   ; the Ash King bars the forge
   lda screen
   cmp #SCR_FORGE
@@ -586,9 +584,11 @@ on_step:
   lda zone_enemies,x
   jsr battle
   jmp load_screen               ; redraw field
+@warped:
 @done:
   rts
 
+; carry set if a warp fired (screen already reloaded)
 do_warp:
   ldx #0
 @l:
@@ -611,7 +611,9 @@ do_warp:
   sta py
   lda #SFX_STAIR
   jsr sfx_play
-  jmp load_screen
+  jsr load_screen
+  sec
+  rts
 @next:
   txa
   clc
@@ -619,6 +621,7 @@ do_warp:
   tax
   bne @l
 @none:
+  clc
   rts
 
 ; ---------------------------------------------------------------- interaction

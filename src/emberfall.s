@@ -12,7 +12,7 @@
 .include "gen/tileids.inc"
 
 .segment "HEADER"
-  .byte "NES", $1A
+  .byte $4E, $45, $53, $1A      ; "NES" (spelled in raw bytes: .charmap is active)
   .byte 2                       ; 2x 16KB PRG
   .byte 1                       ; 1x 8KB CHR
   .byte $01                     ; mapper 0, vertical mirroring

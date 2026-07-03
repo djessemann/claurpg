@@ -25,6 +25,7 @@ DLG_ROW = 20                    ; window top tile row
 ; ---------------------------------------------------------- generic window
 ; draw window at (wx,wy) size ww x wh (buffered). caller aligns to attr grid.
 win_draw:
+  jsr win_hide_sprites
   ; top border
   lda #BORD_TL
   sta rowbuf
@@ -149,6 +150,40 @@ win_draw:
   cmp cnt
   bcc @arow
   beq @arow
+  rts
+
+; hide any sprites that overlap the window rows (rebuilt by field_sprites)
+win_hide_sprites:
+  lda wy
+  asl
+  asl
+  asl
+  sta t3                        ; window top pixel
+  lda wy
+  clc
+  adc wh
+  asl
+  asl
+  asl
+  sta t4                        ; window bottom pixel
+  ldx #0
+@l:
+  lda OAMBUF,x
+  clc
+  adc #9
+  cmp t3
+  bcc @next                     ; sprite fully above window
+  lda OAMBUF,x
+  cmp t4
+  bcs @next                     ; fully below
+  lda #$F0
+  sta OAMBUF,x
+@next:
+  inx
+  inx
+  inx
+  inx
+  bne @l
   rts
 
 ; write string p0 at col X row Y (single buffered row, no controls)
