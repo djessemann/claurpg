@@ -8,7 +8,7 @@
 .importzp p0, p1, p2, pad, pad_new, frame_cnt
 .importzp scrollX, scrollXhi, scrollY
 .import wait_nmi, ppu_off, ppu_on, read_pad, set_chr_bg, set_chr_spr
-.import load_palette, draw_screen, clear_nt, OAM, draw_col, rowbase
+.import load_palette, draw_screen, clear_nt, OAM, draw_col, draw_col_fb, rowbase
 .import win_box, win_print, restore_rows_ui, print_num
 .importzp colc, uarg, num_lo, num_hi
 .import mt_attr_tbl
@@ -63,29 +63,12 @@ main_init:
   lda #>pal_ship
   sta p0+1
   jsr load_palette
-  ; draw both nametables from the map
-  lda #<area_map
-  sta p0
-  lda #>area_map
-  sta p0+1
-  lda #MAPW
-  sta p1
-  ldx #0
-  lda #$20
-  jsr draw_screen
-  lda #<area_map
-  sta p0
-  lda #>area_map
-  sta p0+1
-  lda #MAPW
-  sta p1
-  ldx #16
-  lda #$24
-  jsr draw_screen
+  ; draw the torus from the map
   lda #0
   sta col_first
   lda #31
   sta col_last
+  jsr draw_area_fb
   ; hero start near left
   lda #3
   sta htx
@@ -118,6 +101,39 @@ field_loop:
   jsr build_oam
   jsr wait_nmi
   jmp field_loop
+
+; draw 32 torus columns [col_first..col_first+31] (forced blank)
+draw_area_fb:
+  lda area_map_ptr
+  sta p0
+  lda area_map_ptr+1
+  sta p0+1
+  lda area_w
+  sta p1
+  lda col_first
+  sta colc
+  ldx #32
+@l:
+  stx sx
+  jsr draw_col_fb
+  inc colc
+  ldx sx
+  dex
+  bne @l
+  rts
+
+; ppu off, redraw field torus, restore scroll, ppu on (after battle/menu swap)
+redraw_field:
+  jsr ppu_off
+  lda #<pal_ship
+  sta p0
+  lda #>pal_ship
+  sta p0+1
+  jsr load_palette
+  jsr draw_area_fb
+  jsr center_cam
+  jsr build_oam
+  jmp ppu_on
 
 ; stream one metatile column per side as the camera crosses boundaries
 stream_cols:

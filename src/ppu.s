@@ -6,7 +6,7 @@
 .importzp p0, p1, p2
 .import wait_nmi, vq, vq_len
 .export load_palette, draw_screen, clear_nt, vq_send, linebuf
-.export addr_row, rowbase, draw_col
+.export addr_row, rowbase, draw_col, draw_col_fb
 .exportzp colc, mcol0, vaddr_hi, vaddr_lo
 .export _mt_tl, _mt_tr, _mt_bl, _mt_br, _mt_attr
 
@@ -389,16 +389,15 @@ stage_col1:
   bne @l
   rts
 
-; recompute + enqueue the 8-byte attribute cell column for colc's pair
-draw_attr_col:
+; compute mcol0 (pair-left col), attr_nthi, attr_x for colc
+calc_attr_pos:
   lda colc
   and #$FE
-  sta mcol0                      ; pair-left map column (attr_cell uses ax_z=0)
-  ; slot even -> attr_x
+  sta mcol0
   lda colc
   and #$FE
   and #$1F
-  asl                            ; tc0
+  asl
   cmp #32
   bcc @nt0
   sec
@@ -416,6 +415,11 @@ draw_attr_col:
   lsr
   lsr
   sta attr_x
+  rts
+
+; recompute + enqueue the 8-byte attribute cell column for colc's pair
+draw_attr_col:
+  jsr calc_attr_pos
   lda #0
   sta ax_z
   sta ay_z
@@ -441,6 +445,86 @@ draw_attr_col:
   lda ay_z
   cmp #8
   bne @row
+  rts
+
+; ---- forced-blank direct column draw (for area (re)draw with any offset) ----
+; draws map column 'colc' (p0=map, p1=width) into torus slot; rendering OFF
+draw_col_fb:
+  lda colc
+  and #$1F
+  asl
+  cmp #32
+  bcc @nt0
+  sec
+  sbc #32
+  sta col_x
+  lda #$24
+  sta col_nthi
+  jmp @go
+@nt0:
+  sta col_x
+  lda #$20
+  sta col_nthi
+@go:
+  jsr stage_col0
+  bit PPUSTATUS
+  lda #%10000100
+  sta PPUCTRL
+  lda col_nthi
+  sta PPUADDR
+  lda col_x
+  sta PPUADDR
+  ldx #0
+@c0:
+  lda linebuf,x
+  sta PPUDATA
+  inx
+  cpx #30
+  bne @c0
+  jsr stage_col1
+  bit PPUSTATUS
+  lda col_nthi
+  sta PPUADDR
+  lda col_x
+  clc
+  adc #1
+  sta PPUADDR
+  ldx #0
+@c1:
+  lda linebuf,x
+  sta PPUDATA
+  inx
+  cpx #30
+  bne @c1
+  ; attributes
+  jsr calc_attr_pos
+  lda #%10000000
+  sta PPUCTRL
+  lda #0
+  sta ax_z
+  sta ay_z
+@ar:
+  jsr attr_cell
+  pha
+  bit PPUSTATUS
+  lda attr_nthi
+  ora #$03
+  sta PPUADDR
+  lda ay_z
+  asl
+  asl
+  asl
+  clc
+  adc #$C0
+  clc
+  adc attr_x
+  sta PPUADDR
+  pla
+  sta PPUDATA
+  inc ay_z
+  lda ay_z
+  cmp #8
+  bne @ar
   rts
 
 ; ------------------------------------------------------ queued VRAM send
