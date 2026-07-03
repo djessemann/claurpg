@@ -8,14 +8,15 @@
 .importzp p0, p1, p2, pad, pad_new, frame_cnt
 .importzp scrollX, scrollXhi, scrollY
 .import wait_nmi, ppu_off, ppu_on, read_pad, set_chr_bg, set_chr_spr
-.import load_palette, draw_screen, clear_nt, OAM
+.import load_palette, draw_screen, clear_nt, OAM, draw_col, rowbase
+.importzp colc
 .import mt_attr_tbl
 .import spr_AX_D0, spr_AX_D1, spr_AX_U0, spr_AX_U1, spr_AX_L0, spr_AX_L1
 .export main_init
 
-MAPW = 32
+MAPW = 48
 MAPH = 15
-MAXCAMX = MAPW*16 - 256          ; = 256
+MAXCAMX = MAPW*16 - 256          ; = 512
 
 .segment "ZEROPAGE"
 htx:   .res 1                    ; hero tile x (0..MAPW-1)
@@ -29,10 +30,14 @@ mstep: .res 1
 ntx:   .res 1                    ; step target tile
 nty:   .res 1
 camL:  .res 1                    ; camera worldX low
-camH:  .res 1                    ; camera worldX high (bit0)
+camH:  .res 1                    ; camera worldX high
 sx:    .res 1                    ; scratch
 sy:    .res 1
 oami:  .res 1
+col_first: .res 1                ; leftmost map col valid in torus
+col_last:  .res 1                ; rightmost map col valid in torus
+wcol:      .res 1
+tmp_r:     .res 1
 
 .segment "BSS"
 area_map: .res MAPW*MAPH
@@ -66,6 +71,10 @@ main_init:
   ldx #16
   lda #$24
   jsr draw_screen
+  lda #0
+  sta col_first
+  lda #31
+  sta col_last
   ; hero start near left
   lda #3
   sta htx
@@ -88,10 +97,72 @@ field_loop:
   jsr do_step
 @after:
   jsr center_cam
+  jsr stream_cols
   jsr build_oam
-  jsr commit_scroll
   jsr wait_nmi
   jmp field_loop
+
+; stream one metatile column per side as the camera crosses boundaries
+stream_cols:
+  lda #<area_map
+  sta p0
+  lda #>area_map
+  sta p0+1
+  lda #MAPW
+  sta p1
+  lda camL
+  lsr
+  lsr
+  lsr
+  lsr
+  sta wcol
+  lda camH
+  asl
+  asl
+  asl
+  asl
+  ora wcol
+  sta wcol
+  ; right: ensure col_last >= wcol+16
+  lda wcol
+  clc
+  adc #16
+  sta tmp_r
+  lda col_last
+  cmp tmp_r
+  bcs @left
+  lda col_last
+  cmp #MAPW-1
+  bcs @left
+  inc col_last
+  lda col_last
+  sta colc
+  jsr draw_col
+  lda col_last
+  sec
+  sbc #31
+  cmp col_first
+  bcc @left
+  sta col_first
+@left:
+  lda col_first
+  cmp wcol
+  bcc @done
+  beq @done
+  lda col_first
+  beq @done
+  dec col_first
+  lda col_first
+  sta colc
+  jsr draw_col
+  lda col_first
+  clc
+  adc #31
+  cmp col_last
+  bcs @done
+  sta col_last
+@done:
+  rts
 
 ; hero pixel pos from tile pos
 sync_hero_px:
@@ -172,34 +243,21 @@ try_move:
 
 ; Z=0 if target tile (ntx,nty) is solid
 target_solid:
+  lda #<area_map
+  sta p0
+  lda #>area_map
+  sta p0+1
+  lda #MAPW
+  sta p1
   lda nty
-  ; index = nty*32 + ntx
-  asl
-  asl
-  asl
-  asl
-  asl                            ; *32
-  sta sx
-  lda nty
-  lsr
-  lsr
-  lsr                            ; high bits of nty*32
-  sta sy
-  lda sx
+  jsr rowbase
+  lda p2
   clc
   adc ntx
-  sta sx
-  bcc :+
-  inc sy
-:
-  ; p2 = area_map + index
-  lda #<area_map
-  clc
-  adc sx
   sta p2
-  lda #>area_map
-  adc sy
-  sta p2+1
+  bcc :+
+  inc p2+1
+:
   ldy #0
   lda (p2),y
   tax
@@ -267,16 +325,20 @@ center_cam:
   lda hpxH
   sbc #0
   sta camH
-  bpl :+                         ; negative -> clamp 0
+  bcs @nonneg                    ; borrow -> negative -> clamp 0
   lda #0
   sta camL
   sta camH
   jmp @setscroll
-:
-  ; clamp high: if camH>0 (>=256) then compare to MAXCAMX (256 = $0100)
+@nonneg:
   lda camH
-  beq @setscroll                 ; < 256, fine (MAXCAMX=256 so <256 ok)
-  ; camH>=1 -> clamp to 256 exactly
+  cmp #>MAXCAMX
+  bcc @setscroll
+  bne @cap
+  lda camL
+  cmp #<MAXCAMX
+  bcc @setscroll
+@cap:
   lda #<MAXCAMX
   sta camL
   lda #>MAXCAMX
@@ -289,9 +351,6 @@ center_cam:
   sta scrollXhi
   lda #0
   sta scrollY
-  rts
-
-commit_scroll:
   rts
 
 ; --------------------------------------------------------------- sprites
@@ -521,7 +580,34 @@ build_map:
   sta sy
   lda #MT_BLOOM
   jsr setmt
-  lda #31
+  ; more props spread across the long deck
+  lda #34
+  sta sx
+  lda #4
+  sta sy
+  lda #MT_CRATE
+  jsr setmt
+  lda #35
+  sta sx
+  lda #MT_CRATE
+  jsr setmt
+  lda #40
+  sta sx
+  lda #10
+  sta sy
+  lda #MT_BLOOM
+  jsr setmt
+  lda #41
+  sta sx
+  lda #MT_BLOOM
+  jsr setmt
+  lda #44
+  sta sx
+  lda #3
+  sta sy
+  lda #MT_VIEWPORT
+  jsr setmt
+  lda #46
   sta sx
   lda #7
   sta sy
@@ -532,32 +618,21 @@ build_map:
 ; store tile A at (sx=col, sy=row) in area_map
 setmt:
   pha
+  lda #<area_map
+  sta p0
+  lda #>area_map
+  sta p0+1
+  lda #MAPW
+  sta p1
   lda sy
-  asl
-  asl
-  asl
-  asl
-  asl
-  sta p2
-  lda sy
-  lsr
-  lsr
-  lsr
-  sta p2+1
+  jsr rowbase
   lda p2
   clc
   adc sx
   sta p2
-  lda p2+1
-  adc #0
-  sta p2+1
-  lda #<area_map
-  clc
-  adc p2
-  sta p2
-  lda #>area_map
-  adc p2+1
-  sta p2+1
+  bcc :+
+  inc p2+1
+:
   pla
   ldy #0
   sta (p2),y

@@ -122,6 +122,7 @@ nmi:
   lda #>OAM
   sta OAMDMA
   ; flush VRAM queue
+  bit PPUSTATUS                 ; reset PPUADDR write latch (w=0)
   ldx #0
   cpx vq_len
   beq @scroll

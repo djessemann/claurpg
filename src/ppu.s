@@ -6,7 +6,8 @@
 .importzp p0, p1, p2
 .import wait_nmi, vq, vq_len
 .export load_palette, draw_screen, clear_nt, vq_send, linebuf
-.export vaddr_hi, vaddr_lo, addr_row, rowbase
+.export vaddr_hi, vaddr_lo, addr_row, rowbase, draw_col
+.exportzp colc, mcol0
 .export _mt_tl, _mt_tr, _mt_bl, _mt_br, _mt_attr
 
 .import mt_tl_tbl, mt_tr_tbl, mt_bl_tbl, mt_br_tbl, mt_attr_tbl
@@ -27,6 +28,14 @@ vqlen_z:  .res 1
 vqctrl_z: .res 1
 ax_z:     .res 1
 ay_z:     .res 1
+colc:     .res 1                 ; map column to stream
+attr_nthi:.res 1
+attr_x:   .res 1
+tmpx:     .res 1
+lbidx:    .res 1
+rcount:   .res 1
+col_nthi: .res 1
+col_x:    .res 1
 
 .segment "BSS"
 linebuf:  .res 40
@@ -263,6 +272,175 @@ attr_cell:
   asl
   asl
   ora cnt_z
+  rts
+
+; ------------------------------------------ stream one metatile column
+; Enqueue map column 'colc' into its torus slot (colc & 31). Reads p0=map,
+; p1=width. Sends 2 tile-columns (+32) and the attribute cell column.
+draw_col:
+  ; slot s = colc & 31 ; tc0 = s*2 ; NT + x
+  lda colc
+  and #$1F
+  asl                            ; tc0 (0..62)
+  cmp #32
+  bcc @nt0
+  sec
+  sbc #32
+  sta col_x
+  lda #$24
+  sta col_nthi
+  jmp @haveaddr
+@nt0:
+  sta col_x
+  lda #$20
+  sta col_nthi
+@haveaddr:
+  ; ---- tile column 0 (tl,bl) ----
+  jsr stage_col0
+  lda col_nthi
+  sta vaddr_hi
+  lda col_x
+  sta vaddr_lo
+  lda #30
+  ldx #1
+  jsr vq_send
+  ; ---- tile column 1 (tr,br) ----
+  jsr stage_col1
+  lda col_nthi
+  sta vaddr_hi
+  lda col_x
+  clc
+  adc #1
+  sta vaddr_lo
+  lda #30
+  ldx #1
+  jsr vq_send
+  ; ---- attribute cell column ----
+  jmp draw_attr_col
+
+; p2 walks down map column 'colc'; stage tl/bl per row into linebuf
+stage_col0:
+  lda p0
+  clc
+  adc colc
+  sta p2
+  lda p0+1
+  adc #0
+  sta p2+1
+  lda #0
+  sta lbidx
+  lda #15
+  sta rcount
+@l:
+  ldy #0
+  lda (p2),y
+  tax
+  ldy lbidx
+  lda mt_tl_tbl,x
+  sta linebuf,y
+  iny
+  lda mt_bl_tbl,x
+  sta linebuf,y
+  iny
+  sty lbidx
+  lda p2
+  clc
+  adc p1
+  sta p2
+  bcc :+
+  inc p2+1
+:
+  dec rcount
+  bne @l
+  rts
+
+stage_col1:
+  lda p0
+  clc
+  adc colc
+  sta p2
+  lda p0+1
+  adc #0
+  sta p2+1
+  lda #0
+  sta lbidx
+  lda #15
+  sta rcount
+@l:
+  ldy #0
+  lda (p2),y
+  tax
+  ldy lbidx
+  lda mt_tr_tbl,x
+  sta linebuf,y
+  iny
+  lda mt_br_tbl,x
+  sta linebuf,y
+  iny
+  sty lbidx
+  lda p2
+  clc
+  adc p1
+  sta p2
+  bcc :+
+  inc p2+1
+:
+  dec rcount
+  bne @l
+  rts
+
+; recompute + enqueue the 8-byte attribute cell column for colc's pair
+draw_attr_col:
+  lda colc
+  and #$FE
+  sta mcol0                      ; pair-left map column (attr_cell uses ax_z=0)
+  ; slot even -> attr_x
+  lda colc
+  and #$FE
+  and #$1F
+  asl                            ; tc0
+  cmp #32
+  bcc @nt0
+  sec
+  sbc #32
+  sta tmpx
+  lda #$24
+  sta attr_nthi
+  jmp @x
+@nt0:
+  sta tmpx
+  lda #$20
+  sta attr_nthi
+@x:
+  lda tmpx
+  lsr
+  lsr
+  sta attr_x
+  lda #0
+  sta ax_z
+  sta ay_z
+@row:
+  jsr attr_cell
+  sta linebuf
+  lda attr_nthi
+  ora #$03
+  sta vaddr_hi
+  lda ay_z
+  asl
+  asl
+  asl
+  clc
+  adc #$C0
+  clc
+  adc attr_x
+  sta vaddr_lo
+  lda #1
+  ldx #0
+  jsr vq_send
+  inc ay_z
+  lda ay_z
+  cmp #8
+  bne @row
   rts
 
 ; ------------------------------------------------------ queued VRAM send
