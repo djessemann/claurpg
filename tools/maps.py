@@ -187,10 +187,11 @@ for i in range(len(areas)):
 f.write("area_warp_lo:\n  .byte "+",".join(f"<warp{i}" for i in range(len(areas)))+"\n")
 f.write("area_warp_hi:\n  .byte "+",".join(f">warp{i}" for i in range(len(areas)))+"\n")
 
-# encounter pools
+# encounter pools. The game indexes enc_pools by (zone-1)*4 (see on_step in
+# game.s), so row i holds the pool for zone i+1. POOLS is keyed by zone number.
 f.write(".export enc_pools\nenc_pools:\n")
 for z in range(4):
-    pool=POOLS.get(z,[0,0,0,0])
+    pool=POOLS.get(z+1,[0,0,0,0])
     f.write("  .byte "+",".join(str(e) for e in pool)+"\n")
 f.close()
 print(f"{len(areas)} areas emitted")

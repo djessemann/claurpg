@@ -773,7 +773,7 @@ t_vendor:
 END_N = 6
 end_lines_l: .byte <e0,<e1,<e2,<e3,<e4,<e5
 end_lines_h: .byte >e0,>e1,>e2,>e3,>e4,>e5
-end_col: .byte 4, 3, 6, 4, 7, 11
+end_col: .byte 4, 3, 3, 4, 7, 11
 end_row: .byte 6, 9, 12, 15, 19, 23
 e0: .byte "THE CORE IGNITES.", TXT_END
 e1: .byte "LIGHT FLOODS THE DEAD DECKS.", TXT_END

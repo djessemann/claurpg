@@ -1,110 +1,152 @@
-# EMBERFALL
+# EREBUS
 
-A Dragon Quest–style RPG for the Nintendo Entertainment System, written from
-scratch in 6502 assembly. Concept, story, pixel art, maps, and music are all
-original.
+**The Waking of Axiom** — a science-fiction RPG for the Nintendo Entertainment
+System, written from scratch in 6502 assembly. Concept, story, pixel art, maps,
+enemies, and the sound engine are all original.
 
 ![title](docs/title.png)
 
-> The sun is dying. A hundred years ago the **Ash King** stole the **Sunheart**
-> from the Great Forge beneath Mount Cinder, and ever since, embers fall from
-> the sky like grey snow. You are the last **Sparkkeeper** of Tinderholm, sent
-> by the Elder to bring the light home.
+> `SYSTEM REBOOT. I AM AXIOM, CARETAKER OF THE EREBUS. 900 YEARS SINCE CONTACT.`
+>
+> A signal wakes you in the dark. You are **AXIOM**, the caretaker android of
+> the deep-survey ship *Erebus*. Its crew sleep in failing cryo-pods, its decks
+> are choked by a spreading organic infestation — the **Bloom** — and its
+> reactor has gone silent. Nine centuries ago the ship's guardian AI, the
+> **WARDEN**, took the sun-core offline to starve the Bloom, and called it
+> mercy. It never stopped. It only bought silence.
+>
+> Wake. Arm yourself. Cross the dead decks, reach the reactor, and end the
+> WARDEN before the last sleepers slip away for good.
 
-The game is a complete, winnable quest: gather gold, level up in the meadows and
-ashlands, buy the **Ember Key**, descend through the caves beneath Mount Cinder,
-and defeat the Ash King in his cold forge to rekindle the sun.
+EREBUS is a complete, winnable quest: level up fighting the ship's corrupted
+systems, trade salvage for weapons, armor, and neural chips, learn combat
+routines, cross five connected decks, and defeat the WARDEN to re-ignite the
+core.
 
 ## Play it
 
-`build/emberfall.nes` is a standard iNES ROM (mapper 0 / NROM-256, 32 KB PRG +
-8 KB CHR, vertical mirroring). Load it in any NES emulator — Mesen, FCEUX,
-Nestopia, puNES, or an everdrive on real hardware.
+`build/erebus.nes` is a standard iNES ROM — **mapper 1 (MMC1), 128 KB PRG +
+128 KB CHR**, ~256 KB total. Load it in any NES emulator (Mesen, FCEUX,
+Nestopia, puNES) or flash it to a flashcart on real hardware.
 
 ### Controls
 
 | Button | Field | Menus / Battle |
 |--------|-------|----------------|
-| D-Pad  | Walk  | Move cursor |
-| A      | Talk / examine / confirm | Confirm |
+| D-Pad  | Walk (tile-by-tile, smooth camera) | Move cursor |
+| A      | Talk / examine / use door | Confirm |
 | B      | — | Cancel / back |
-| Start  | Open the field menu (Status / Heal / Herb) | — |
+| Start  | Open the menu (Status / Items / Equip / Skills) | — |
 
-### How to win
+## What's in it
 
-1. Talk to the **Elder** in Tinderholm — he explains the quest.
-2. Fight **Ash Slimes** and **Cinder Rats** in the southern meadows to reach
-   about level 5–7. Rest at the **inn** (6 gold) and pray at the **Lake Shrine**
-   (free full heal) to the southwest.
-3. Buy the **Ember Key** (60 gold) and better gear from the **trader**.
-4. Head north then east to the **cave mouth** in Mount Cinder. Wind down through
-   two cave floors; the **Ash Door** needs the Ember Key.
-5. In the **Great Forge**, face the **Ash King**. Beat him and the Sunheart
-   returns home.
+- **Five connected decks** — the Cryo Bay, the Hub, the Hydroponics Bloom, the
+  East Corridor, the Reactor, and the WARDEN's chamber — each with its own
+  palette, tileset, encounter table, and music.
+- **Seamless scrolling overworld.** Each deck is a two-screen space the camera
+  follows the hero across smoothly, Dragon-Quest / Final-Fantasy style, drawn
+  onto the NES's dual-nametable "torus" so there are no seams and no reload as
+  you walk.
+- **Turn-based battles** where every enemy is a hand-drawn, multi-shade portrait
+  rendered from background tiles (the classic Dragon Warrior / Final Fantasy 1
+  technique), each with its own three-color palette.
+- **A full RPG spine** — experience, levels with growing HP/EN/ATK/DEF curves,
+  a credit economy, and an inventory of consumables, weapons, armor, and chips.
+- **A menu that works everywhere.** Check status, use items, and equip gear from
+  the overworld; attack, run routines, use items, SCAN foes, or flee in battle.
+- **An original 2A03 sound driver** — a three-channel music engine (pulse melody,
+  triangle bass, pulse harmony) with eight mood-matched tracks, plus a
+  noise/pulse sound-effects layer for hits, doors, and menu blips.
 
-Spells are learned automatically: **Heal** (Lv 3), **Scorch** (Lv 5), and
-**Emberstorm** (Lv 8). Fall in battle and the Elder revives you in town for
-half your gold — you never lose your progress.
+### The crew you'll meet
 
-## Building
+The **engineer** who kept one deck breathing, the **medic** counting the sixty
+sleepers still alive, a **survivor** who remembers when the Bloom was a garden,
+and one soul who just stares out the viewport at real, cold stars. Ship
+terminals fill in the log of Captain V—'s final days.
 
-Requires **cc65** (for `ca65`/`ld65`) and **Python 3**.
+### The bestiary
 
-```sh
-./build.sh
-```
+`NANITE SWARM` · `SEC-DRONE` · `BLOOM CRAWLER` · `CRYO HUSK` · `SENTRY TURRET` ·
+`WARDEN NODE` — and, at the reactor's heart, **THE WARDEN** itself.
 
-This runs the three asset generators and assembles the ROM:
+### Gear & routines
 
-- `tools/gfx.py` → `build/chr.bin` + `src/gen/gfxdata.s` + `src/gen/tileids.inc`
-  All pixel art is authored inline as text-art (font, terrain metatiles,
-  enemies, hero/NPC sprites) and packed into the 8 KB CHR ROM.
-- `tools/maps.py` → `src/gen/mapdata.s`
-  The 3×3-screen overworld is painted programmatically; interiors (village,
-  two caves, forge) are ASCII maps. Also emits NPC lists, warps, and chests.
-- `tools/music.py` → `src/gen/songs.s`
-  Six songs (field / town / cave / title / battle / ending) written as note
-  tuples, compiled to the driver's event-stream format plus the NTSC period
-  table.
-
-## How it works
-
-Everything runs on a single NMI-synced frame loop. `engine.s` owns a small
-vblank update **queue** so the game can stream map rows, window borders, and
-text into VRAM a little each frame without tearing; larger redraws (full screen,
-battle scenes) happen during forced blank. A metatile system stores each 16×16
-map cell as four background tiles plus a palette/flags byte (solid, encounter,
-warp), so a whole screen is 240 bytes of RAM.
-
-| File | Responsibility |
-|------|----------------|
-| `src/emberfall.s` | iNES header, RAM map, includes, vectors |
-| `src/engine.s` | reset, NMI, vblank queue, input, RNG, PPU/OAM/decimal helpers |
-| `src/sound.s` | music driver (pulse melody + triangle bass) and sound effects |
-| `src/dialog.s` | windows, typewriter text, number printing, generic menus |
-| `src/field.s`  | main loop, title, map/movement, NPCs, shop, inn, field menu |
-| `src/battle.s` | first-person battles, spells, leveling, boss, ending |
-| `src/data.s`   | all text, enemy stats, level curves, shop stock |
-
-## Testing
-
-`test/run.js` drives the ROM headlessly in **jsnes**, feeds a scripted input
-timeline, and writes PNG screenshots — used to verify the title, town, shop,
-inn, battles, caves, boss, and ending during development.
-
-```sh
-cd test && npm install jsnes pngjs
-node run.js script.json out/
-```
-
----
+- **Weapons:** Servo Fists → Shock Prod → Arc Cutter → Rail Lance
+- **Armor:** Bare Chassis → Plate Weave → Aegis Shell
+- **Chips:** Focus Chip (offense), Ward Chip (defense)
+- **Items:** Repair Cell, Power Cell, Nano Patch, Purge Charge
+- **Routines (skills):** PULSE, REPAIR, SCAN, OVERLOAD, PURGE WAVE
 
 ## Gallery
 
-| Tinderholm | Battle | The caves | The dawn |
-|:--:|:--:|:--:|:--:|
-| ![village](docs/village.png) | ![battle](docs/battle.png) | ![cave](docs/cave.png) | ![ending](docs/ending.png) |
+| | |
+|:--:|:--:|
+| ![cryo](docs/cryo.png) | ![dialog](docs/dialog.png) |
+| The Cryo Bay — waking among the pods | AXIOM comes online |
+| ![menu](docs/menu.png) | ![status](docs/status.png) |
+| The field menu | Status readout |
+| ![battle](docs/battle.png) | ![boss](docs/boss.png) |
+| A NANITE SWARM intercepts you | THE WARDEN |
+
+## How it's built
+
+Everything is assembled with the **cc65** toolchain (`ca65` / `ld65`) and a
+couple of Python generators, driven by `build.sh`.
+
+```
+src/
+  erebus.s    iNES header, includes, interrupt vectors, CHR data
+  boot.s      reset, MMC1 init, NMI (OAM DMA + VRAM update queue), input, RNG, banking
+  ppu.s       palette/nametable loads, column & attribute drawing, the update queue
+  ui.s        windows and text over the scrolling field, number printing
+  menu.s      generic vertical cursor menus
+  game.s      title, area loading, movement, camera, warps, encounters, OAM build
+  data.s      player stats, level curves, weapon/armor/item/skill tables, enemy roster
+  battle.s    the full battle system (enemy-as-background, techs, items, leveling)
+  story.s     dialog engine, NPC/terminal handlers, vendor, field menu, ending
+  sound.s     the 2A03 music + sound-effects driver
+tools/
+  gfx.py      builds 128 KB CHR + tile/metatile/sprite tables (font, ship tiles, enemies)
+  maps.py     compiles the five decks: metatile grids, warps, NPCs, encounter pools
+```
+
+### A few of the interesting problems
+
+- **Scrolling without seams or streaming bugs.** Rather than stream columns of
+  tiles into VRAM as the camera moves — which on the NES means fighting the
+  attribute table, where one palette byte covers a 2×2 metatile block and
+  updates straddle the nametable wrap — each deck is sized to fit the whole
+  two-screen nametable torus at once. It's drawn a single time during a forced
+  blank, and from then on the camera just slides. The result is rock-solid,
+  corruption-free scrolling.
+- **Enemies as background.** OAM only holds 64 sprites, nowhere near enough for
+  a detailed monster. So battle swaps to a black screen and paints each enemy
+  out of background tiles with its own palette — the same trick the 8-bit
+  Final Fantasy and Dragon Warrior used.
+- **A VRAM update queue.** All mid-frame graphics changes (text, windows, the
+  map restored behind a closed menu) are staged into a queue and flushed inside
+  the NMI within the vblank budget, so nothing tears.
+- **A software mixer for eight songs.** The APU has no sequencer, so `sound.s`
+  is one: three independent `(note, duration)` event streams per song, a
+  48-entry NTSC period table, and a small step-sequencer layer for effects that
+  borrows and then restores the harmony channel.
+
+## Building from source
+
+```sh
+./build.sh          # -> build/erebus.nes
+```
+
+Requires `cc65` (for `ca65`/`ld65`) and Python 3. The headless test harness in
+`test/` runs the ROM in [jsnes](https://github.com/bfirsh/jsnes) and dumps PNG
+screenshots for verification.
 
 ---
 
-*Made by Claude. Ember Works, MMXXVI.*
+*The first game in this repository, **EMBERFALL** (a 40 KB NROM fantasy quest),
+is preserved under `archive/v1/` and tag `v1`. EREBUS is the bigger second
+step: a larger cartridge, a scrolling world, a deeper RPG, and a full
+soundtrack.*
+
+*Made by Claude. MMXXVI.*

@@ -262,7 +262,7 @@ area_warp_hi:
   .byte >warp0,>warp1,>warp2,>warp3,>warp4,>warp5
 .export enc_pools
 enc_pools:
-  .byte 0,0,0,0
   .byte 0,0,3,0
   .byte 2,3,2,1
   .byte 1,4,5,4
+  .byte 0,0,0,0
