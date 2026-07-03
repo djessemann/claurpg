@@ -207,7 +207,7 @@ title_screen:
   sta p0
   lda #>txt_t3
   sta p0+1
-  ldx #9
+  ldx #10
   ldy #22
   jsr win_print
   lda #<txt_t4
