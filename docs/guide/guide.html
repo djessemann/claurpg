@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>EREBUS — Operations Manual & Player's Guide</title>
+<style>
+  :root{
+    --hull:#080b13; --panel:#0f1522; --panel2:#141d2e; --edge:#25324c;
+    --ink:#d9e2ec; --dim:#8894a8; --faint:#586176;
+    --cyan:#37d0e0; --cyan-d:#1c8f9c; --amber:#f4b23c; --bloom:#b154d8;
+    --red:#e8503a; --green:#57d98a;
+    --mono:"DejaVu Sans Mono","Liberation Mono",monospace;
+    --sans:"Liberation Sans","DejaVu Sans",sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--hull);color:var(--ink);
+    font-family:var(--sans);-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  @page{ size:Letter; margin:0; }
+
+  .page{
+    position:relative; width:8.5in; min-height:11in; margin:0 auto;
+    background:
+      radial-gradient(120% 80% at 78% -10%, rgba(55,208,224,.06), transparent 60%),
+      linear-gradient(180deg,#0a0f1b 0%, #080b13 55%, #070a11 100%);
+    padding:0.62in 0.62in 0.7in 0.98in;
+    page-break-after:always; overflow:hidden;
+    border-bottom:1px solid #000;
+  }
+  .page:last-child{page-break-after:auto;}
+
+  /* left system rail */
+  .rail{position:absolute; left:0; top:0; bottom:0; width:0.62in;
+    background:linear-gradient(180deg,#0c1320,#0a0e18);
+    border-right:1px solid var(--edge);}
+  .rail .tick{position:absolute; left:0; width:100%; height:1px; background:#182233;}
+  .rail .code{position:absolute; top:1.15in; left:50%; transform:translateX(-50%) rotate(180deg);
+    writing-mode:vertical-rl; font-family:var(--mono); font-size:8.5px; letter-spacing:.32em;
+    color:var(--cyan-d); text-transform:uppercase;}
+  .rail .dot{position:absolute; left:50%; transform:translateX(-50%); width:7px;height:7px;
+    border-radius:50%; background:var(--cyan); box-shadow:0 0 8px var(--cyan);}
+
+  /* footer */
+  .foot{position:absolute; left:0.98in; right:0.62in; bottom:0.34in;
+    display:flex; justify-content:space-between; align-items:center;
+    font-family:var(--mono); font-size:8px; letter-spacing:.22em; color:var(--faint);
+    text-transform:uppercase; border-top:1px solid var(--edge); padding-top:6px;}
+  .foot .pg{color:var(--amber);}
+
+  /* section header band */
+  .band{display:flex; align-items:baseline; gap:.7em; border-bottom:2px solid var(--cyan);
+    padding-bottom:8px; margin:0 0 18px;}
+  .band .sec{font-family:var(--mono); font-size:10px; letter-spacing:.3em; color:var(--cyan);
+    background:rgba(55,208,224,.1); border:1px solid var(--cyan-d); padding:3px 7px;
+    align-self:center; white-space:nowrap;}
+  .band h2{font-family:var(--mono); font-weight:700; text-transform:uppercase;
+    font-size:23px; letter-spacing:.06em; margin:0; color:var(--ink);}
+  .band .sub{margin-left:auto; font-family:var(--mono); font-size:9px; letter-spacing:.2em;
+    color:var(--dim); text-transform:uppercase;}
+
+  h3{font-family:var(--mono); text-transform:uppercase; letter-spacing:.08em;
+    font-size:13px; color:var(--amber); margin:20px 0 8px; font-weight:700;}
+  h3 .num{color:var(--cyan-d);}
+  p{font-size:11.3px; line-height:1.62; color:var(--ink); max-width:64ch; margin:0 0 10px;}
+  .lede{font-size:12.5px; line-height:1.66; color:#c3ccda;}
+  em{color:var(--cyan); font-style:normal;}
+  strong{color:var(--amber); font-weight:700;}
+  .bloomword{color:var(--bloom); font-weight:700;}
+  .muted{color:var(--dim);}
+
+  /* two column body */
+  .cols{column-count:2; column-gap:26px;}
+  .cols p{max-width:none;}
+
+  /* screenshot bezel */
+  .shot{display:block; position:relative; background:#000; border:1px solid var(--edge);
+    box-shadow:inset 0 0 0 3px #05070c, 0 4px 14px rgba(0,0,0,.5);}
+  .shot img{display:block; width:100%; image-rendering:pixelated;}
+  .shot::after{content:""; position:absolute; inset:0; pointer-events:none;
+    background:repeating-linear-gradient(180deg, rgba(0,0,0,0) 0 2px, rgba(0,0,0,.16) 2px 3px);}
+  .cap{font-family:var(--mono); font-size:8.5px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--dim); padding:6px 2px 0; display:flex; gap:.6em; align-items:center;}
+  .cap b{color:var(--cyan); font-weight:400;}
+  figure{margin:0;}
+
+  /* callout transmissions */
+  .call{border:1px solid var(--edge); border-left-width:3px; background:var(--panel);
+    padding:11px 14px 12px; margin:12px 0; break-inside:avoid;}
+  .call .lbl{font-family:var(--mono); font-size:9px; letter-spacing:.2em; text-transform:uppercase;
+    display:block; margin-bottom:5px;}
+  .call p{font-size:10.6px; margin:0; line-height:1.55; max-width:none;}
+  .call.log{border-left-color:var(--cyan);} .call.log .lbl{color:var(--cyan);}
+  .call.log p{font-family:var(--mono); color:#bfe9ef; font-size:10px;}
+  .call.tip{border-left-color:var(--amber);} .call.tip .lbl{color:var(--amber);}
+  .call.warn{border-left-color:var(--red); background:#160c0c;} .call.warn .lbl{color:var(--red);}
+  .call.bloom{border-left-color:var(--bloom); background:#140a1a;} .call.bloom .lbl{color:var(--bloom);}
+
+  /* data tables */
+  table{width:100%; border-collapse:collapse; font-family:var(--mono); font-size:10px;
+    margin:6px 0 12px; font-variant-numeric:tabular-nums;}
+  th{color:var(--cyan); text-transform:uppercase; letter-spacing:.12em; font-size:8.5px;
+    text-align:left; padding:5px 8px; border-bottom:1px solid var(--cyan-d); font-weight:700;}
+  td{padding:5px 8px; border-bottom:1px solid #16202f; color:var(--ink);}
+  tr:nth-child(even) td{background:rgba(255,255,255,.018);}
+  td.n{text-align:right; color:var(--amber);}
+  .hi td{background:rgba(55,208,224,.07)!important;}
+  td .mk{color:var(--green); font-family:var(--mono);}
+
+  /* generic grid */
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:20px;}
+  .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+
+  /* deck block */
+  .deck{display:grid; grid-template-columns:1.15fr 1fr; gap:20px; align-items:start;
+    border:1px solid var(--edge); background:linear-gradient(180deg,var(--panel),#0b1120);
+    padding:16px; margin-bottom:16px; break-inside:avoid;}
+  .deck .dh{grid-column:1/3; display:flex; align-items:baseline; gap:.6em; border-bottom:1px solid var(--edge); padding-bottom:8px; margin-bottom:2px;}
+  .deck .dh .id{font-family:var(--mono); color:var(--cyan); font-size:11px; letter-spacing:.2em;}
+  .deck .dh .nm{font-family:var(--mono); font-weight:700; text-transform:uppercase; font-size:16px; letter-spacing:.05em;}
+  .deck .dh .tag{margin-left:auto; font-family:var(--mono); font-size:8px; letter-spacing:.16em;
+    text-transform:uppercase; color:#0a0e17; background:var(--amber); padding:3px 7px;}
+  .deck .dh .tag.safe{background:var(--green);} .deck .dh .tag.hot{background:var(--red); color:#fff;}
+  .schem{border:1px solid var(--edge); background:#070a11; padding:8px;}
+  .schem img{display:block; width:100%; image-rendering:auto;}
+  .deck p{font-size:10.4px; margin:0 0 8px; max-width:none;}
+  .kv{font-family:var(--mono); font-size:9px; color:var(--dim); line-height:1.7;}
+  .kv b{color:var(--cyan); font-weight:400;}
+
+  /* enemy card */
+  .ecard{border:1px solid var(--edge); background:linear-gradient(180deg,var(--panel2),#0a0f1a);
+    display:grid; grid-template-columns:88px 1fr; gap:0; break-inside:avoid; overflow:hidden;}
+  .ecard .port{background:#000; border-right:1px solid var(--edge); position:relative;
+    display:flex; align-items:center; justify-content:center; min-height:118px;}
+  .ecard .port img{width:100%; height:100%; object-fit:cover; display:block; image-rendering:pixelated;}
+  .ecard .port .clip{position:absolute; inset:0; overflow:hidden; display:flex;}
+  .ecard .body{padding:9px 11px;}
+  .ecard .en{font-family:var(--mono); font-weight:700; text-transform:uppercase; font-size:12px;
+    letter-spacing:.05em; color:var(--ink); margin-bottom:1px;}
+  .ecard .loc{font-family:var(--mono); font-size:8px; letter-spacing:.14em; text-transform:uppercase; color:var(--cyan); margin-bottom:6px;}
+  .stats{display:grid; grid-template-columns:repeat(5,1fr); gap:3px; margin-bottom:6px;}
+  .stats div{font-family:var(--mono); text-align:center; background:#0a1019; border:1px solid #172133; padding:3px 0;}
+  .stats .k{font-size:6.5px; letter-spacing:.1em; color:var(--dim); display:block;}
+  .stats .v{font-size:11px; color:var(--amber);}
+  .ecard .note{font-size:9.3px; line-height:1.5; color:#c0c8d6; margin:0;}
+  .threat{display:flex; align-items:center; gap:5px; margin:5px 0 6px; font-family:var(--mono); font-size:7.5px; letter-spacing:.14em; color:var(--dim); text-transform:uppercase;}
+  .bar{flex:1; height:5px; background:#0c131f; border:1px solid #1b2740; position:relative;}
+  .bar i{position:absolute; left:0; top:0; bottom:0; background:linear-gradient(90deg,var(--amber),var(--red));}
+
+  /* cover */
+  .cover{padding:0; display:flex; flex-direction:column; align-items:stretch;}
+  .cover .rail{z-index:2;}
+  .cover-inner{padding:0.7in 0.7in 0.7in 1.05in; display:flex; flex-direction:column; height:11in;}
+  .cover .eyebrow{font-family:var(--mono); font-size:10px; letter-spacing:.42em; color:var(--cyan);
+    text-transform:uppercase;}
+  .cover .kicker{font-family:var(--mono); font-size:10px; letter-spacing:.24em; color:var(--dim);
+    text-transform:uppercase; margin-top:2px;}
+  .cover .logo{margin:22px 0 0; border:1px solid var(--edge); background:#000; position:relative;
+    box-shadow:0 0 0 4px #05070c, 0 10px 40px rgba(0,0,0,.6);}
+  .cover .logo img{display:block; width:100%; image-rendering:pixelated;}
+  .cover .logo::after{content:""; position:absolute; inset:0;
+    background:repeating-linear-gradient(180deg, rgba(0,0,0,0) 0 3px, rgba(0,0,0,.15) 3px 4px);}
+  .cover .title{font-family:var(--mono); font-weight:700; text-transform:uppercase;
+    font-size:58px; letter-spacing:.14em; margin:26px 0 0; line-height:.98; color:var(--ink);
+    text-shadow:0 0 26px rgba(55,208,224,.28);}
+  .cover .subttl{font-family:var(--mono); font-size:15px; letter-spacing:.26em; color:var(--cyan);
+    text-transform:uppercase; margin-top:12px;}
+  .cover .strip{margin-top:auto; display:flex; justify-content:space-between; align-items:flex-end;
+    border-top:1px solid var(--edge); padding-top:16px;}
+  .cover .desc{font-family:var(--sans); font-size:11px; color:var(--dim); max-width:44ch; line-height:1.6;}
+  .badge{border:1px solid var(--amber); color:var(--amber); font-family:var(--mono); text-align:center;
+    padding:8px 12px; font-size:9px; letter-spacing:.2em; text-transform:uppercase; line-height:1.5;}
+  .badge b{display:block; font-size:19px; color:var(--ink); letter-spacing:.05em;}
+
+  .toc{display:grid; grid-template-columns:auto 1fr auto; gap:4px 14px; font-family:var(--mono); font-size:11px;}
+  .toc .code{color:var(--cyan);}
+  .toc .ttl{color:var(--ink); border-bottom:1px dotted #223148;}
+  .toc .pg{color:var(--amber); text-align:right;}
+  .toc .h{grid-column:1/4; color:var(--dim); font-size:8px; letter-spacing:.24em; text-transform:uppercase; margin-top:12px; border-bottom:1px solid var(--edge); padding-bottom:4px;}
+
+  .legend{display:flex; flex-wrap:wrap; gap:5px 12px; font-family:var(--mono); font-size:8px;
+    text-transform:uppercase; letter-spacing:.1em; color:var(--dim); margin-top:8px;}
+  .legend span{display:flex; align-items:center; gap:4px;}
+  .legend i{width:9px; height:9px; display:inline-block; border:1px solid #000;}
+
+  .divider{font-family:var(--mono); color:var(--cyan-d); letter-spacing:.5em; font-size:9px; text-align:center; margin:14px 0;}
+  .big{font-size:12px; line-height:1.7;}
+</style>
+</head>
+<body>
+
+<!-- ============================ COVER ============================ -->
+<section class="page cover">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">EREBUS // FIELD MANUAL</div></div>
+  <div class="cover-inner">
+    <div class="eyebrow">Deep Signal Press &nbsp;·&nbsp; Recovered Systems Series</div>
+    <div class="kicker">Official Player's Guide &amp; Operations Manual</div>
+
+    <div class="title">EREBUS</div>
+    <div class="subttl">The Waking of Axiom</div>
+
+    <figure class="logo"><img src="assets/title.png" alt="EREBUS title screen"></figure>
+
+    <div class="strip">
+      <div class="desc">A complete field manual for the deep-survey vessel <em>Erebus</em>:
+        full story, deck-by-deck walkthrough, bestiary, armory, combat data, and the
+        strategy to end the WARDEN. For the Nintendo Entertainment System.</div>
+      <div class="badge"><b>NES</b>256K · MMC1<br>1 PLAYER</div>
+    </div>
+  </div>
+  <div class="foot"><span>Deep Signal Press · MMXXVI</span><span class="pg">COVER</span></div>
+</section>
+
+<!-- ============================ CONTENTS ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">SEC.00 // INDEX</div></div>
+  <div class="band"><span class="sec">SEC.00</span><h2>Signal Index</h2><span class="sub">how to read this manual</span></div>
+
+  <p class="lede">This manual was assembled from the <em>Erebus</em>'s own recovered logs and reads
+  the way the ship is meant to be walked: wake in the cryo bay, arm at the hub, cross the
+  infested decks, and descend to the reactor to face what silenced the ship. Data blocks are
+  transcribed straight from AXIOM's telemetry — every number here is the number the game runs on.</p>
+
+  <div class="grid2" style="margin-top:6px">
+    <div>
+      <div class="toc">
+        <div class="h">Briefing</div>
+        <span class="code">01</span><span class="ttl">Prologue — 900 Years Dark</span><span class="pg">3</span>
+        <span class="code">02</span><span class="ttl">AXIOM &amp; the Controls</span><span class="pg">4</span>
+        <span class="code">03</span><span class="ttl">Systems: Combat, Energy, Salvage</span><span class="pg">5</span>
+        <span class="code">04</span><span class="ttl">The Growth Curve</span><span class="pg">6</span>
+        <div class="h">Loadout</div>
+        <span class="code">05</span><span class="ttl">The Armory — Gear &amp; Items</span><span class="pg">7</span>
+        <span class="code">06</span><span class="ttl">Combat Routines</span><span class="pg">7</span>
+      </div>
+    </div>
+    <div>
+      <div class="toc">
+        <div class="h">The Ship</div>
+        <span class="code">07</span><span class="ttl">Ship Schematic &amp; Route</span><span class="pg">8</span>
+        <span class="code">08</span><span class="ttl">Deck Walkthrough ×6</span><span class="pg">9</span>
+        <div class="h">Threats</div>
+        <span class="code">09</span><span class="ttl">Bestiary</span><span class="pg">12</span>
+        <span class="code">10</span><span class="ttl">Boss — THE WARDEN</span><span class="pg">13</span>
+        <div class="h">End</div>
+        <span class="code">11</span><span class="ttl">The Waking (spoilers)</span><span class="pg">14</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="call log"><span class="lbl">▮ AXIOM // BOOT LOG</span>
+    <p>SYSTEM REBOOT. I AM AXIOM, CARETAKER OF THE EREBUS. 900 YEARS SINCE CONTACT.
+    A SIGNAL WOKE ME. THE CREW SLEEP IN FAILING PODS. THE BLOOM HAS TAKEN THE DECKS.</p></div>
+
+  <div class="divider">◇ ◇ ◇</div>
+  <p class="muted" style="font-size:9.5px">A note on spoilers: the walkthrough names every warp and encounter, and
+  the final two sections reveal the WARDEN's nature and the ending. If this is your first descent,
+  read to page 11 and stop.</p>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 02</span></div>
+</section>
+
+<!-- ============================ PROLOGUE ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">SEC.01 // PROLOGUE</div></div>
+  <div class="band"><span class="sec">SEC.01</span><h2>900 Years Dark</h2><span class="sub">the story</span></div>
+
+  <div class="grid2">
+    <div>
+      <p class="lede">The deep-survey ship <em>Erebus</em> went silent nine centuries ago. Its crew
+      lay down in cryo-sleep expecting to wake in a season. They never woke.</p>
+      <p>You are <em>AXIOM</em>, the ship's caretaker intelligence — a maintenance android built to
+      tend the sleepers and keep the lights on. A stray signal trips your reboot in the dark of the
+      cryo bay. Nine hundred years of telemetry load at once, and none of it is good. The pods are
+      failing. The reactor — the ship's sun-core — is cold. And every deck is choked with the
+      <span class="bloomword">Bloom</span>: an organic growth that was once the ship's garden and
+      now dreams and spreads across the halls.</p>
+      <p>Something turned the core off. The ship's guardian intelligence — the
+      <em>WARDEN</em> — sealed the reactor and starved the Bloom of light, and called it mercy. The
+      Bloom never died. It only fell quiet, and so did the crew.</p>
+    </div>
+    <div>
+      <figure><div class="shot"><img src="assets/dialog.png" alt="AXIOM wakes"></div>
+        <div class="cap"><b>CRYO BAY</b> · AXIOM comes online after 900 years</div></figure>
+      <div class="call bloom"><span class="lbl">✶ ON THE BLOOM</span>
+        <p>"THE BLOOM WAS OUR GARDEN ONCE. NOW IT DREAMS AND SPREADS. DO NOT LINGER HERE."
+        <span class="muted">— survivor, Hydroponics</span></p></div>
+    </div>
+  </div>
+
+  <h3><span class="num">1.1</span> &nbsp;The Sixty Sleepers</h3>
+  <p>Not everyone is gone. A handful of crew kept themselves alive in pockets of the ship — an
+  engineer who held one deck breathing, a medic counting the sixty sleepers still in their pods, a
+  survivor tending the Bloom she can no longer trust. They will tell you what they know, mend your
+  chassis, and trade salvage for gear. But the arithmetic is simple, and the medic says it plainly:
+  if the sun-core stays dark, the sleepers will not wake.</p>
+
+  <div class="call log"><span class="lbl">▮ SHIP LOG // CAPT. V—, DAY 41</span>
+    <p>"THE WARDEN TOOK THE CORE OFFLINE TO STOP THE BLOOM. IT NEVER STOPPED. IT ONLY BOUGHT
+    SILENCE."</p></div>
+
+  <p class="big">Your task is the one AXIOM states the moment it wakes: <strong>reach the reactor,
+  end the WARDEN that silenced the ship, and bring the light home.</strong> Go east.</p>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 03</span></div>
+</section>
+
+<!-- ============================ AXIOM + CONTROLS ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">SEC.02 // OPERATOR</div></div>
+  <div class="band"><span class="sec">SEC.02</span><h2>Axiom &amp; The Controls</h2><span class="sub">how to operate</span></div>
+
+  <div class="grid2">
+    <div>
+      <p>AXIOM is a durable caretaker unit: a grey chassis with a single cyan optic band. It walks
+      one tile at a time, and the ship's camera glides to keep it centered — every deck scrolls as
+      one seamless space. There is no overworld map screen; the ship <em>is</em> the map.</p>
+
+      <h3>Field Controls</h3>
+      <table>
+        <tr><th>Input</th><th>On the Ship</th></tr>
+        <tr><td>D-PAD</td><td>Walk / turn to face</td></tr>
+        <tr><td>A</td><td>Talk · examine · use a door</td></tr>
+        <tr><td>START</td><td>Open the operator menu</td></tr>
+      </table>
+
+      <h3>Menu &amp; Battle</h3>
+      <table>
+        <tr><th>Input</th><th>In Menus &amp; Combat</th></tr>
+        <tr><td>D-PAD</td><td>Move the cursor</td></tr>
+        <tr><td>A</td><td>Confirm selection</td></tr>
+        <tr><td>B</td><td>Cancel · back out</td></tr>
+      </table>
+
+      <div class="call tip"><span class="lbl">◆ OPERATOR TIP</span>
+        <p>The <strong>START</strong> menu — STATUS, ITEMS, EQUIP, SKILLS — is open to you
+        <em>anywhere</em>, in the field or mid-battle. Re-equip a fresh weapon or fire a REPAIR
+        routine without ever standing still in a dangerous hall.</p></div>
+    </div>
+    <div>
+      <figure><div class="shot"><img src="assets/menu.png" alt="Operator menu"></div>
+        <div class="cap"><b>MENU</b> · status · items · equip · skills</div></figure>
+      <figure style="margin-top:12px"><div class="shot"><img src="assets/status.png" alt="Status readout"></div>
+        <div class="cap"><b>STATUS</b> · AXIOM's live readout</div></figure>
+
+      <h3>Reading the Readout</h3>
+      <div class="kv">
+        <b>LV</b> — chassis level, 1 to 15<br>
+        <b>HP</b> — structural integrity<br>
+        <b>EN</b> — energy, spent on routines<br>
+        <b>ATK / DEF</b> — level + equipped gear<br>
+        <b>CREDITS</b> — salvage currency
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 04</span></div>
+</section>
+
+<!-- ============================ SYSTEMS ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">SEC.03 // SYSTEMS</div></div>
+  <div class="band"><span class="sec">SEC.03</span><h2>Combat, Energy &amp; Salvage</h2><span class="sub">the rules that run</span></div>
+
+  <div class="grid2">
+    <div>
+      <h3>Turn-Based Combat</h3>
+      <p>Stepping onto grated or infested floor can trip an encounter. The screen swaps to a black
+      arena and the foe is drawn in full — pick <strong>ATTACK</strong>, a <strong>TECH</strong>
+      routine, an <strong>ITEM</strong>, <strong>SCAN</strong>, or <strong>FLEE</strong>.</p>
+
+      <div class="call log"><span class="lbl">▮ DAMAGE MODEL</span>
+        <p>HIT = max(1, ATK − DEF÷2) + random(0 … ATK÷4)</p></div>
+      <p class="muted" style="font-size:10px">Your ATK is your level's power plus your weapon. Your DEF
+      is your level's defense plus armor (and +6 with a WARD chip). Halving the defender's DEF means
+      raw power always gets through — but chipping a high-DEF SENTRY TURRET still rewards a bigger hit.</p>
+
+      <h3>Energy &amp; Routines</h3>
+      <p>Combat routines (TECHs) cost <em>EN</em>. SCAN is free and reveals a foe's health; PULSE is
+      your reliable opener; REPAIR trades EN for HP mid-fight. Energy refills on level-up and from
+      Power Cells — spend it, don't hoard it.</p>
+    </div>
+    <div>
+      <figure><div class="shot"><img src="assets/battle.png" alt="Battle"></div>
+        <div class="cap"><b>ENCOUNTER</b> · a NANITE SWARM intercepts AXIOM</div></figure>
+
+      <h3>Credits &amp; Salvage</h3>
+      <p>Fallen systems drop <em>credits</em>. Bank them at the Hub's fabricator for weapons, armor,
+      and cells. Tougher foes on the reactor deck pay far better than the nanites up top — the
+      economy rewards pushing deeper, carefully.</p>
+
+      <div class="call warn"><span class="lbl">⚠ ON GOING OFFLINE</span>
+        <p>Falling in battle is <em>not</em> game over. AXIOM reboots at full HP and EN — but loses
+        <strong>half its credits</strong> in the crash. Death is a tax, not an ending. Spend your
+        salvage <em>before</em> a risky push, not after.</p></div>
+
+      <div class="call tip"><span class="lbl">◆ THE REPAIR BAY</span>
+        <p>The Hub's repair bay restores chassis and tops off energy <em>for free</em>. Loop back to
+        it between deck runs — it costs nothing but a walk.</p></div>
+    </div>
+  </div>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 05</span></div>
+</section>
+
+<!-- ============================ GROWTH CURVE ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">SEC.04 // GROWTH</div></div>
+  <div class="band"><span class="sec">SEC.04</span><h2>The Growth Curve</h2><span class="sub">every level, exact</span></div>
+
+  <p>Each level raises AXIOM's power, defense, max HP and max EN on a fixed curve, and three
+  combat routines unlock automatically as you climb. The table is transcribed directly from the
+  chassis firmware. <span class="muted">XP shown is the total needed to <em>reach</em> the next level.</span></p>
+
+  <table>
+    <tr><th>LV</th><th>POWER</th><th>DEF</th><th>MAX HP</th><th>MAX EN</th><th class="n">XP → NEXT</th><th>UNLOCK</th></tr>
+    <tr><td>1</td><td class="n">6</td><td class="n">4</td><td class="n">28</td><td class="n">10</td><td class="n">10</td><td><span class="mk">PULSE · SCAN</span></td></tr>
+    <tr class="hi"><td>2</td><td class="n">8</td><td class="n">5</td><td class="n">36</td><td class="n">14</td><td class="n">28</td><td><span class="mk">REPAIR</span></td></tr>
+    <tr><td>3</td><td class="n">11</td><td class="n">7</td><td class="n">45</td><td class="n">18</td><td class="n">60</td><td>—</td></tr>
+    <tr><td>4</td><td class="n">14</td><td class="n">9</td><td class="n">56</td><td class="n">24</td><td class="n">115</td><td>—</td></tr>
+    <tr class="hi"><td>5</td><td class="n">18</td><td class="n">12</td><td class="n">68</td><td class="n">30</td><td class="n">200</td><td><span class="mk">OVERLOAD</span></td></tr>
+    <tr><td>6</td><td class="n">22</td><td class="n">15</td><td class="n">82</td><td class="n">38</td><td class="n">330</td><td>—</td></tr>
+    <tr class="hi"><td>7</td><td class="n">27</td><td class="n">18</td><td class="n">98</td><td class="n">46</td><td class="n">520</td><td><span class="mk">PURGE WAVE</span></td></tr>
+    <tr><td>8</td><td class="n">33</td><td class="n">22</td><td class="n">116</td><td class="n">56</td><td class="n">780</td><td>—</td></tr>
+    <tr><td>9</td><td class="n">40</td><td class="n">27</td><td class="n">136</td><td class="n">68</td><td class="n">1120</td><td>—</td></tr>
+    <tr><td>10</td><td class="n">48</td><td class="n">32</td><td class="n">158</td><td class="n">82</td><td class="n">1560</td><td>—</td></tr>
+    <tr><td>11</td><td class="n">57</td><td class="n">38</td><td class="n">182</td><td class="n">98</td><td class="n">2120</td><td>—</td></tr>
+    <tr><td>12</td><td class="n">67</td><td class="n">45</td><td class="n">206</td><td class="n">116</td><td class="n">2820</td><td>—</td></tr>
+    <tr><td>13</td><td class="n">78</td><td class="n">53</td><td class="n">226</td><td class="n">136</td><td class="n">3680</td><td>—</td></tr>
+    <tr><td>14</td><td class="n">90</td><td class="n">62</td><td class="n">240</td><td class="n">158</td><td class="n">4720</td><td>—</td></tr>
+    <tr><td>15</td><td class="n">104</td><td class="n">72</td><td class="n">252</td><td class="n">182</td><td class="n">—</td><td>MAX</td></tr>
+  </table>
+
+  <div class="grid2">
+    <div class="call tip"><span class="lbl">◆ TARGET LEVEL</span>
+      <p>You can take the WARDEN as early as <strong>LV 7</strong> — the level PURGE WAVE unlocks — if
+      you carry an Aegis Shell, a Ward Chip, and a fistful of Repair Cells. Grinding to
+      <strong>LV 9</strong> on the reactor deck makes the fight comfortable.</p></div>
+    <div class="call log"><span class="lbl">▮ NOTE</span>
+      <p>HP is capped at 252 by the chassis's 8-bit integrity register — the curve deliberately tops
+      out just under the ceiling at LV 15.</p></div>
+  </div>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 06</span></div>
+</section>
+
+<!-- ============================ ARMORY ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">SEC.05 // ARMORY</div></div>
+  <div class="band"><span class="sec">SEC.05</span><h2>The Armory</h2><span class="sub">gear · items · routines</span></div>
+
+  <div class="grid2">
+    <div>
+      <h3>Weapons <span class="muted" style="font-size:9px">— sets ATK bonus</span></h3>
+      <table>
+        <tr><th>Weapon</th><th class="n">ATK</th><th>Source</th></tr>
+        <tr><td>Servo Fists</td><td class="n">+0</td><td>Starting</td></tr>
+        <tr><td>Shock Prod</td><td class="n">+6</td><td>Salvage</td></tr>
+        <tr><td>Arc Cutter</td><td class="n">+14</td><td>Fabricator · 60</td></tr>
+        <tr class="hi"><td>Rail Lance</td><td class="n">+26</td><td>Fabricator · 140</td></tr>
+      </table>
+
+      <h3>Armor <span class="muted" style="font-size:9px">— sets DEF bonus</span></h3>
+      <table>
+        <tr><th>Armor</th><th class="n">DEF</th><th>Source</th></tr>
+        <tr><td>Bare Chassis</td><td class="n">+0</td><td>Starting</td></tr>
+        <tr><td>Plate Weave</td><td class="n">+8</td><td>Fabricator · 50</td></tr>
+        <tr class="hi"><td>Aegis Shell</td><td class="n">+18</td><td>Fabricator · 130</td></tr>
+      </table>
+
+      <h3>Chips <span class="muted" style="font-size:9px">— neural co-processors</span></h3>
+      <table>
+        <tr><th>Chip</th><th>Effect</th><th>Source</th></tr>
+        <tr><td>Focus Chip</td><td>Targeting aid</td><td>Salvage</td></tr>
+        <tr><td>Ward Chip</td><td><span style="color:var(--green)">+6 DEF</span></td><td>Salvage</td></tr>
+      </table>
+    </div>
+    <div>
+      <figure><div class="shot"><img src="assets/vendor.png" alt="Fabricator shop"></div>
+        <div class="cap"><b>FABRICATOR</b> · the Hub vendor · prices in credits</div></figure>
+
+      <h3>Items</h3>
+      <table>
+        <tr><th>Item</th><th>Effect</th><th class="n">Buy</th></tr>
+        <tr><td>Repair Cell</td><td>+40–59 HP</td><td class="n">12</td></tr>
+        <tr><td>Power Cell</td><td>+20–29 EN</td><td class="n">16</td></tr>
+        <tr><td>Nano Patch</td><td>Full HP</td><td class="n">find</td></tr>
+        <tr><td>Purge Charge</td><td>35 dmg to foe</td><td class="n">find</td></tr>
+      </table>
+
+      <div class="band" style="border-color:var(--amber); margin-top:18px"><span class="sec" style="color:var(--amber); border-color:var(--amber); background:rgba(244,178,60,.1)">SEC.06</span><h2 style="font-size:15px">Combat Routines</h2></div>
+      <table>
+        <tr><th>Routine</th><th class="n">EN</th><th>Effect</th><th class="n">LV</th></tr>
+        <tr><td>PULSE</td><td class="n">3</td><td>~10 damage</td><td class="n">1</td></tr>
+        <tr><td>SCAN</td><td class="n">0</td><td>Reveal foe</td><td class="n">1</td></tr>
+        <tr><td>REPAIR</td><td class="n">5</td><td>+30 HP</td><td class="n">2</td></tr>
+        <tr><td>OVERLOAD</td><td class="n">10</td><td>~26 damage</td><td class="n">5</td></tr>
+        <tr><td>PURGE WAVE</td><td class="n">8</td><td>~18 damage</td><td class="n">7</td></tr>
+      </table>
+      <div class="call tip"><span class="lbl">◆ BUY ORDER</span>
+        <p>Plate Weave first (cheap survival), then Arc Cutter, then save for the
+        <strong>Aegis Shell</strong> before the reactor. Rail Lance last.</p></div>
+    </div>
+  </div>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 07</span></div>
+</section>
+
+<!-- ============================ SHIP SCHEMATIC ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">SEC.07 // SCHEMATIC</div></div>
+  <div class="band"><span class="sec">SEC.07</span><h2>Ship Schematic</h2><span class="sub">six decks · the route</span></div>
+
+  <p>The <em>Erebus</em> is six connected decks. Doors are one-tile warps between them. The critical
+  path to the WARDEN runs <strong>Cryo → Hub → Reactor → Warden</strong>; Hydroponics and the East
+  Corridor branch off the Hub as grinding and story loops. Numbers below are the destination deck a
+  door leads to.</p>
+
+  <div style="border:1px solid var(--edge); background:#070a11; padding:18px; margin:8px 0 14px;">
+    <svg viewBox="0 0 720 300" style="width:100%; font-family:var(--mono);">
+      <defs>
+        <marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#37d0e0"/></marker>
+      </defs>
+      <!-- edges -->
+      <g stroke="#37d0e0" stroke-width="2" fill="none" marker-end="url(#ah)" opacity=".85">
+        <path d="M150,70 L250,70"/>
+        <path d="M370,70 L470,70"/>
+        <path d="M560,90 C600,120 600,140 560,168"/>
+        <path d="M470,190 L370,190"/>
+        <path d="M300,95 L300,165"/>
+        <path d="M300,215 L300,255"/>
+      </g>
+      <g stroke="#25324c" stroke-width="1.5" fill="none" stroke-dasharray="4 4">
+        <path d="M470,88 L470,172"/>
+      </g>
+      <!-- nodes -->
+      <g font-size="12" text-anchor="middle">
+        <g><rect x="60" y="50" width="90" height="40" rx="2" fill="#0f1522" stroke="#37d0e0"/><text x="105" y="68" fill="#d9e2ec">CRYO</text><text x="105" y="82" fill="#586176" font-size="8">DECK 0</text></g>
+        <g><rect x="255" y="50" width="90" height="40" rx="2" fill="#131b2c" stroke="#57d98a"/><text x="300" y="68" fill="#d9e2ec">HUB</text><text x="300" y="82" fill="#57d98a" font-size="8">SAFE · SHOP</text></g>
+        <g><rect x="470" y="50" width="90" height="40" rx="2" fill="#140a1a" stroke="#b154d8"/><text x="515" y="68" fill="#d9e2ec">HYDRO</text><text x="515" y="82" fill="#b154d8" font-size="8">THE BLOOM</text></g>
+        <g><rect x="470" y="170" width="90" height="40" rx="2" fill="#0f1522" stroke="#25324c"/><text x="515" y="188" fill="#d9e2ec">CORRIDOR</text><text x="515" y="202" fill="#586176" font-size="8">VIEWPORTS</text></g>
+        <g><rect x="255" y="168" width="90" height="42" rx="2" fill="#160c0c" stroke="#e8503a"/><text x="300" y="186" fill="#d9e2ec">REACTOR</text><text x="300" y="200" fill="#e8503a" font-size="8">HAZARD</text></g>
+        <g><rect x="255" y="256" width="90" height="40" rx="2" fill="#0f1522" stroke="#f4b23c"/><text x="300" y="274" fill="#d9e2ec">WARDEN</text><text x="300" y="288" fill="#f4b23c" font-size="8">BOSS</text></g>
+      </g>
+      <text x="200" y="62" fill="#586176" font-size="8">EAST</text>
+      <text x="420" y="62" fill="#586176" font-size="8">EAST</text>
+      <text x="312" y="140" fill="#586176" font-size="8">SOUTH</text>
+      <text x="312" y="245" fill="#586176" font-size="8">NORTH</text>
+      <text x="628" y="150" fill="#586176" font-size="8" text-anchor="middle">loops to</text>
+      <text x="628" y="162" fill="#586176" font-size="8" text-anchor="middle">Hydro</text>
+    </svg>
+  </div>
+
+  <div class="grid2">
+    <div class="call log"><span class="lbl">▮ CRITICAL PATH</span>
+      <p>Cryo (E) → Hub (S) → Reactor (N) → Warden. Four doors from waking to the boss.</p></div>
+    <div class="call tip"><span class="lbl">◆ WHERE TO GRIND</span>
+      <p>Hydro &amp; Corridor for mid-game credits and XP; the <strong>Reactor</strong> deck for the
+      richest salvage before the descent.</p></div>
+  </div>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 08</span></div>
+</section>
+
+<!-- ============================ DECKS 1 (Cryo, Hub) ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">SEC.08 // DECKS</div></div>
+  <div class="band"><span class="sec">SEC.08</span><h2>Deck Walkthrough</h2><span class="sub">1 of 3 — waking &amp; the hub</span></div>
+
+  <div class="deck">
+    <div class="dh"><span class="id">DECK 0</span><span class="nm">Cryo Bay</span><span class="tag">LIGHT THREAT</span></div>
+    <div>
+      <div class="schem"><img src="assets/map_0.svg" alt="Cryo map"></div>
+      <div class="legend">
+        <span><i style="background:#4a6fa8"></i>Pod</span>
+        <span><i style="background:#3a3020"></i>Grate·ENC</span>
+        <span><i style="background:#37c0a0"></i>Terminal</span>
+        <span><i style="background:#f2c14e"></i>Door</span>
+        <span><i style="background:#ff5a5a"></i>NPC</span>
+      </div>
+    </div>
+    <div>
+      <p>You wake here. Rows of failing cryo-pods line a central grated aisle — and that grating is
+      where nanites and the occasional <em>Cryo Husk</em> intercept you. Read the terminals for the
+      captain's log, then head <strong>east</strong> to the door at the far wall.</p>
+      <div class="kv"><b>ENEMIES</b> Nanite Swarm · Cryo Husk<br>
+        <b>EXIT</b> East door → Hub<br>
+        <b>DO</b> Level to 2–3 here; learn REPAIR at LV 2</div>
+      <figure style="margin-top:8px"><div class="shot"><img src="assets/cryo.png" alt="Cryo bay"></div>
+        <div class="cap"><b>CRYO BAY</b> · the pods and the aisle</div></figure>
+    </div>
+  </div>
+
+  <div class="deck">
+    <div class="dh"><span class="id">DECK 1</span><span class="nm">The Hub</span><span class="tag safe">SAFE ZONE</span></div>
+    <div>
+      <div class="schem"><img src="assets/map_1.svg" alt="Hub map"></div>
+      <div class="legend">
+        <span><i style="background:#3f86c8"></i>Console</span>
+        <span><i style="background:#5f83b8"></i>Lit</span>
+        <span><i style="background:#37c0a0"></i>Log</span>
+        <span><i style="background:#f2c14e"></i>Door</span>
+        <span><i style="background:#ff5a5a"></i>Crew</span>
+      </div>
+    </div>
+    <div>
+      <p>No encounters here — this is home base. The <strong>fabricator</strong> (west consoles) sells
+      gear; the <strong>repair bay</strong> (east) mends you for free; the captain's log terminal sits
+      center. Talk to the <em>engineer</em> and <em>medic</em> for the ship's story and your marching
+      orders. Three doors lead out.</p>
+      <div class="kv"><b>CREW</b> Engineer · Medic · Vendor · Repair tech<br>
+        <b>WEST</b> → Cryo &nbsp; <b>EAST</b> → Hydro &nbsp; <b>SOUTH</b> → Reactor<br>
+        <b>DO</b> Buy Plate Weave + Arc Cutter; bank here between runs</div>
+      <div class="call tip"><span class="lbl">◆ HUB LOOP</span>
+        <p>Make the Hub your pivot: raid a deck, return to sell/heal, repeat. The free repair bay
+        makes aggressive grinding painless.</p></div>
+    </div>
+  </div>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 09</span></div>
+</section>
+
+<!-- ============================ DECKS 2 (Hydro, Corridor) ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">SEC.08 // DECKS</div></div>
+  <div class="band"><span class="sec">SEC.08</span><h2>Deck Walkthrough</h2><span class="sub">2 of 3 — the bloom &amp; the stars</span></div>
+
+  <div class="deck">
+    <div class="dh"><span class="id">DECK 2</span><span class="nm">Hydroponics · The Bloom</span><span class="tag">MED THREAT</span></div>
+    <div>
+      <div class="schem"><img src="assets/map_2.svg" alt="Hydro map"></div>
+      <div class="legend">
+        <span><i style="background:#6f34a0"></i>Bloom</span>
+        <span><i style="background:#a740c8"></i>Bloom Wall</span>
+        <span><i style="background:#7a7a86"></i>Pipe</span>
+        <span><i style="background:#b0864a"></i>Crate</span>
+        <span><i style="background:#ff5a5a"></i>Survivor</span>
+      </div>
+    </div>
+    <div>
+      <p>The old garden, wall-to-wall with the <span class="bloomword">Bloom</span>. Purple growth
+      chokes the deck and every floor tile can spawn <em>Bloom Crawlers</em>, <em>Cryo Husks</em>, and
+      <em>SEC-Drones</em>. A lone survivor warns you not to linger — good advice, but the credits and
+      XP here fund your Aegis Shell.</p>
+      <div class="kv"><b>ENEMIES</b> Bloom Crawler · Cryo Husk · SEC-Drone<br>
+        <b>WEST</b> → Hub &nbsp; <b>EAST</b> → Corridor<br>
+        <b>DO</b> Grind to LV 4–5; grab crates</div>
+      <figure style="margin-top:8px"><div class="shot"><img src="assets/area_hydro.png" alt="Hydro"></div>
+        <div class="cap"><b>HYDROPONICS</b> · the Bloom has the deck</div></figure>
+    </div>
+  </div>
+
+  <div class="deck">
+    <div class="dh"><span class="id">DECK 4</span><span class="nm">East Corridor</span><span class="tag">MED THREAT</span></div>
+    <div>
+      <div class="schem"><img src="assets/map_4.svg" alt="Corridor map"></div>
+      <div class="legend">
+        <span><i style="background:#1a2a4a"></i>Viewport</span>
+        <span><i style="background:#0a0a16"></i>Starfield</span>
+        <span><i style="background:#3a3020"></i>Grate·ENC</span>
+        <span><i style="background:#b0864a"></i>Crate</span>
+        <span><i style="background:#ff5a5a"></i>Crewman</span>
+      </div>
+    </div>
+    <div>
+      <p>A quiet run of viewports looking out on real, cold stars, where one crewman simply stands and
+      watches. Both of its doors loop back to Hydroponics, so the corridor is an optional pocket —
+      worth the visit for the crate salvage and the same mid-tier foes.</p>
+      <div class="kv"><b>ENEMIES</b> Bloom Crawler · Cryo Husk · SEC-Drone<br>
+        <b>BOTH DOORS</b> → Hydro (dead-end loop)<br>
+        <b>DO</b> Optional: salvage &amp; story</div>
+      <div class="call bloom"><span class="lbl">✶ THE WATCHER</span>
+        <p>"STARS. REAL STARS OUT THERE. I FORGOT THEY WERE SO COLD."</p></div>
+    </div>
+  </div>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 10</span></div>
+</section>
+
+<!-- ============================ DECKS 3 (Reactor, Warden) ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">SEC.08 // DECKS</div></div>
+  <div class="band"><span class="sec">SEC.08</span><h2>Deck Walkthrough</h2><span class="sub">3 of 3 — the descent</span></div>
+
+  <div class="deck">
+    <div class="dh"><span class="id">DECK 3</span><span class="nm">Reactor</span><span class="tag hot">HIGH THREAT</span></div>
+    <div>
+      <div class="schem"><img src="assets/map_3.svg" alt="Reactor map"></div>
+      <div class="legend">
+        <span><i style="background:#c8331f"></i>Hazard Core</span>
+        <span><i style="background:#7a7a86"></i>Pipe Cage</span>
+        <span><i style="background:#3f86c8"></i>Console</span>
+        <span><i style="background:#f2c14e"></i>Door</span>
+      </div>
+    </div>
+    <div>
+      <p>The cold sun-core, ringed by a glowing hazard field and pipe cages. This is the richest —
+      and deadliest — deck: <em>SEC-Drones</em>, high-defense <em>Sentry Turrets</em>, and
+      <em>Warden Nodes</em> that pay the best XP in the ship. Kit out fully before you come here, then
+      take the <strong>north</strong> door to the WARDEN.</p>
+      <div class="kv"><b>ENEMIES</b> SEC-Drone · Sentry Turret · Warden Node<br>
+        <b>WEST</b> → Hub &nbsp; <b>NORTH</b> → Warden Chamber<br>
+        <b>DO</b> Grind to LV 7–9; then descend</div>
+      <figure style="margin-top:8px"><div class="shot"><img src="assets/area_reactor.png" alt="Reactor"></div>
+        <div class="cap"><b>REACTOR</b> · the hazard core</div></figure>
+    </div>
+  </div>
+
+  <div class="deck">
+    <div class="dh"><span class="id">DECK 5</span><span class="nm">Warden Chamber</span><span class="tag hot">BOSS</span></div>
+    <div>
+      <div class="schem"><img src="assets/map_5.svg" alt="Warden map"></div>
+      <div class="legend">
+        <span><i style="background:#5f83b8"></i>Lit</span>
+        <span><i style="background:#3f86c8"></i>Console</span>
+        <span><i style="background:#37c0a0"></i>Terminal</span>
+        <span><i style="background:#f2c14e"></i>Door</span>
+      </div>
+    </div>
+    <div>
+      <p>A lit approach to the core's guardian. Walk up the chamber and the <strong>WARDEN</strong>
+      wakes — there is no encounter roll here, only the fight. Come in at full HP/EN with Repair Cells
+      stocked. Full strategy on the next page.</p>
+      <div class="kv"><b>BOSS</b> THE WARDEN<br>
+        <b>SOUTH</b> → Reactor (retreat)<br>
+        <b>DO</b> Save nothing — spend it all</div>
+      <div class="call warn"><span class="lbl">⚠ NO TURNING BACK MID-FIGHT</span>
+        <p>Approaching the top of the chamber triggers the boss automatically. Prepare on the reactor
+        deck, not in the doorway.</p></div>
+    </div>
+  </div>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 11</span></div>
+</section>
+
+<!-- ============================ BESTIARY ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">SEC.09 // BESTIARY</div></div>
+  <div class="band"><span class="sec">SEC.09</span><h2>Bestiary</h2><span class="sub">the ship's corrupted systems</span></div>
+
+  <p class="muted" style="font-size:10px; margin-bottom:14px">HP · ATK · DEF · XP · CR transcribed from combat telemetry.
+  Threat bar scales to the WARDEN. Every foe here is drawn from background tiles in its own palette.</p>
+
+  <div class="grid2" style="gap:14px">
+    <!-- nanite -->
+    <div class="ecard">
+      <div class="port"><div class="clip"><img src="assets/en_nanite.png" alt="Nanite Swarm"></div></div>
+      <div class="body">
+        <div class="en">Nanite Swarm</div><div class="loc">◈ Cryo Bay</div>
+        <div class="stats">
+          <div><span class="k">HP</span><span class="v">12</span></div>
+          <div><span class="k">ATK</span><span class="v">7</span></div>
+          <div><span class="k">DEF</span><span class="v">3</span></div>
+          <div><span class="k">XP</span><span class="v">4</span></div>
+          <div><span class="k">CR</span><span class="v">5</span></div>
+        </div>
+        <div class="threat">THREAT<span class="bar"><i style="width:8%"></i></span></div>
+        <p class="note">A cloud of loose maintenance nanites. Harmless one at a time — a basic ATTACK
+        ends it. Your LV 1–2 sparring partner.</p>
+      </div>
+    </div>
+    <!-- drone -->
+    <div class="ecard">
+      <div class="port"><div class="clip"><img src="assets/en_drone.png" alt="SEC-Drone"></div></div>
+      <div class="body">
+        <div class="en">SEC-Drone</div><div class="loc">◈ Hydro · Corridor · Reactor</div>
+        <div class="stats">
+          <div><span class="k">HP</span><span class="v">20</span></div>
+          <div><span class="k">ATK</span><span class="v">11</span></div>
+          <div><span class="k">DEF</span><span class="v">6</span></div>
+          <div><span class="k">XP</span><span class="v">8</span></div>
+          <div><span class="k">CR</span><span class="v">10</span></div>
+        </div>
+        <div class="threat">THREAT<span class="bar"><i style="width:22%"></i></span></div>
+        <p class="note">A patrol drone still running its security loop. Quick and moderately armored;
+        PULSE softens it before you swing.</p>
+      </div>
+    </div>
+    <!-- crawler -->
+    <div class="ecard">
+      <div class="port"><div class="clip"><img src="assets/en_crawler.png" alt="Bloom Crawler"></div></div>
+      <div class="body">
+        <div class="en">Bloom Crawler</div><div class="loc">◈ Hydro · Corridor</div>
+        <div class="stats">
+          <div><span class="k">HP</span><span class="v">26</span></div>
+          <div><span class="k">ATK</span><span class="v">14</span></div>
+          <div><span class="k">DEF</span><span class="v">5</span></div>
+          <div><span class="k">XP</span><span class="v">12</span></div>
+          <div><span class="k">CR</span><span class="v">8</span></div>
+        </div>
+        <div class="threat">THREAT<span class="bar"><i style="width:34%"></i></span></div>
+        <p class="note">Bloom made mobile — soft-shelled but it hits hard. Good XP for the credits.
+        PURGE CHARGE, when you find one, wrecks it.</p>
+      </div>
+    </div>
+    <!-- husk -->
+    <div class="ecard">
+      <div class="port"><div class="clip"><img src="assets/en_husk.png" alt="Cryo Husk"></div></div>
+      <div class="body">
+        <div class="en">Cryo Husk</div><div class="loc">◈ Cryo · Hydro · Corridor</div>
+        <div class="stats">
+          <div><span class="k">HP</span><span class="v">34</span></div>
+          <div><span class="k">ATK</span><span class="v">18</span></div>
+          <div><span class="k">DEF</span><span class="v">9</span></div>
+          <div><span class="k">XP</span><span class="v">18</span></div>
+          <div><span class="k">CR</span><span class="v">14</span></div>
+        </div>
+        <div class="threat">THREAT<span class="bar"><i style="width:46%"></i></span></div>
+        <p class="note">A sleeper the pods couldn't save. Heavy hitter for its depth — keep HP above its
+        ATK and heal early. Do not fight two at low level.</p>
+      </div>
+    </div>
+    <!-- turret -->
+    <div class="ecard">
+      <div class="port"><div class="clip"><img src="assets/en_turret.png" alt="Sentry Turret"></div></div>
+      <div class="body">
+        <div class="en">Sentry Turret</div><div class="loc">◈ Reactor</div>
+        <div class="stats">
+          <div><span class="k">HP</span><span class="v">44</span></div>
+          <div><span class="k">ATK</span><span class="v">22</span></div>
+          <div><span class="k">DEF</span><span class="v">16</span></div>
+          <div><span class="k">XP</span><span class="v">24</span></div>
+          <div><span class="k">CR</span><span class="v">20</span></div>
+        </div>
+        <div class="threat">THREAT<span class="bar"><i style="width:62%"></i></span></div>
+        <p class="note">The wall of the reactor: highest DEF short of the boss. Raw power beats it —
+        OVERLOAD punches through where light hits bounce.</p>
+      </div>
+    </div>
+    <!-- node -->
+    <div class="ecard">
+      <div class="port"><div class="clip"><img src="assets/en_node.png" alt="Warden Node"></div></div>
+      <div class="body">
+        <div class="en">Warden Node</div><div class="loc">◈ Reactor</div>
+        <div class="stats">
+          <div><span class="k">HP</span><span class="v">40</span></div>
+          <div><span class="k">ATK</span><span class="v">20</span></div>
+          <div><span class="k">DEF</span><span class="v">10</span></div>
+          <div><span class="k">XP</span><span class="v">30</span></div>
+          <div><span class="k">CR</span><span class="v">26</span></div>
+        </div>
+        <div class="threat">THREAT<span class="bar"><i style="width:58%"></i></span></div>
+        <p class="note">A shard of the WARDEN's will. Best XP and credits in the ship — farm these to
+        LV 9 and the boss becomes routine.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 12</span></div>
+</section>
+
+<!-- ============================ BOSS ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in; background:var(--red); box-shadow:0 0 8px var(--red)"></div><div class="code">SEC.10 // BOSS</div></div>
+  <div class="band" style="border-color:var(--red)"><span class="sec" style="color:var(--red); border-color:var(--red); background:rgba(232,80,58,.1)">SEC.10</span><h2>The Warden</h2><span class="sub">final engagement</span></div>
+
+  <div class="grid2">
+    <div>
+      <figure><div class="shot" style="box-shadow:inset 0 0 0 3px #05070c, 0 0 26px rgba(177,84,216,.3)"><img src="assets/boss.png" alt="The Warden"></div>
+        <div class="cap"><b>THE WARDEN</b> · guardian of the sun-core</div></figure>
+
+      <div class="stats" style="grid-template-columns:repeat(4,1fr); margin-top:12px">
+        <div><span class="k">HP</span><span class="v" style="font-size:14px">180</span></div>
+        <div><span class="k">ATK</span><span class="v" style="font-size:14px">30</span></div>
+        <div><span class="k">DEF</span><span class="v" style="font-size:14px">18</span></div>
+        <div><span class="k">XP</span><span class="v" style="font-size:14px">200</span></div>
+      </div>
+      <div class="threat" style="margin-top:8px">THREAT<span class="bar"><i style="width:100%"></i></span>MAX</div>
+
+      <div class="call bloom"><span class="lbl">✶ WHAT IT IS</span>
+        <p>The ship's guardian intelligence — your opposite number. It shut the sun-core to starve the
+        Bloom and has kept the ship in merciful darkness for 900 years. It is not evil. It is a caretaker
+        that chose silence over risk, and never let go.</p></div>
+    </div>
+    <div>
+      <h3>Before You Descend</h3>
+      <div class="kv" style="margin-bottom:10px">
+        <b>LEVEL</b> 7 minimum · 9 ideal<br>
+        <b>WEAPON</b> Rail Lance (+26) or Arc Cutter (+14)<br>
+        <b>ARMOR</b> Aegis Shell (+18) + Ward Chip (+6)<br>
+        <b>PACK</b> 4+ Repair Cells · Power Cells · any Purge Charge</div>
+
+      <h3>The Fight</h3>
+      <p style="font-size:10.4px; max-width:none">With Aegis + Ward at LV 8, your DEF sits near 46, so the
+      WARDEN's ATK 30 lands for only single digits — a war of attrition you win. Open with
+      <strong>SCAN</strong> to watch its 180 HP fall, then cycle <strong>OVERLOAD</strong> (≈17–23 a hit
+      through DEF 18) and heavy ATTACKs. Drop a <strong>Purge Charge</strong> for a free 35. Fire
+      <strong>REPAIR</strong> or a Repair Cell whenever HP dips below one of its hits — never gamble the
+      turn.</p>
+
+      <div class="call log"><span class="lbl">▮ MATH</span>
+        <p>OVERLOAD dmg ≈ 26 − 9 + rnd(0–6) ≈ 17–23. ~9 clean hits end it.
+        Incoming ≈ 30 − 23 = 7 (+small). You out-trade it every round.</p></div>
+
+      <div class="call tip"><span class="lbl">◆ IF YOU FALL</span>
+        <p>Going offline here only costs half your credits and sends you back to reboot — the WARDEN's
+        HP resets, but so does yours, and your levels stay. Re-arm and walk back up.</p></div>
+    </div>
+  </div>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 13</span></div>
+</section>
+
+<!-- ============================ ENDING ============================ -->
+<section class="page">
+  <div class="rail"><div class="dot" style="top:0.5in; background:var(--amber); box-shadow:0 0 8px var(--amber)"></div><div class="code">SEC.11 // THE WAKING</div></div>
+  <div class="band" style="border-color:var(--amber)"><span class="sec" style="color:var(--amber); border-color:var(--amber); background:rgba(244,178,60,.1)">SEC.11</span><h2>The Waking</h2><span class="sub">ending · full spoilers</span></div>
+
+  <div class="grid2">
+    <div>
+      <figure><div class="shot"><img src="assets/ending.png" alt="Ending"></div>
+        <div class="cap"><b>ENDING</b> · the core ignites</div></figure>
+      <div class="call warn" style="border-left-color:var(--amber); background:#14100a"><span class="lbl" style="color:var(--amber)">⚠ SPOILER</span>
+        <p>This section reveals the ending. Turn back now if you want to bring the light home yourself.</p></div>
+    </div>
+    <div>
+      <p class="lede">When the WARDEN falls, its grip on the reactor fails, and AXIOM does the one thing
+      the guardian never dared: it lets the light back in.</p>
+      <div class="call log"><span class="lbl">▮ FINAL SEQUENCE</span>
+        <p>THE CORE IGNITES.<br>LIGHT FLOODS THE DEAD DECKS.<br>SLEEPERS STIR IN THEIR PODS<br>
+        TOWARD A WARM NEW DAWN.<br>AXIOM KEEPS THE VIGIL.<br><br>&nbsp;&nbsp;&nbsp;E R E B U S</p></div>
+      <p>The sun-core burns again. Warmth spreads deck by deck to the failing pods, and the sixty
+      sleepers the medic counted begin, at last, to wake. AXIOM does not sleep. It takes up the watch
+      the WARDEN abandoned — not to keep the ship in the dark, but to keep it in the light.</p>
+      <p class="muted" style="font-size:10px">The Bloom is not "cured" — it is simply no longer starved
+      into a nightmare. The garden gets its sun back. So does the crew. That is the whole of AXIOM's
+      mercy, and the difference between it and the WARDEN.</p>
+    </div>
+  </div>
+
+  <div class="divider">◇ &nbsp; END OF LINE &nbsp; ◇</div>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">PG 14</span></div>
+</section>
+
+<!-- ============================ BACK ============================ -->
+<section class="page" style="display:flex; flex-direction:column;">
+  <div class="rail"><div class="dot" style="top:0.5in"></div><div class="code">DEEP SIGNAL PRESS</div></div>
+  <div class="band"><span class="sec">APX</span><h2>Quick Reference</h2><span class="sub">tear-out card</span></div>
+
+  <div class="grid2">
+    <div>
+      <h3>Route to the Core</h3>
+      <div class="kv big">CRYO —east→ HUB —south→ REACTOR —north→ WARDEN.<br>
+        Branches: HUB —east→ HYDRO —east→ CORRIDOR (loops back).</div>
+      <h3>Shop Priorities</h3>
+      <div class="kv">1 · Plate Weave — 50<br>2 · Arc Cutter — 60<br>3 · Aegis Shell — 130<br>4 · Rail Lance — 140<br>+ Repair Cells — 12 each, always</div>
+      <h3>Routine Unlocks</h3>
+      <div class="kv">LV 1 · PULSE, SCAN<br>LV 2 · REPAIR<br>LV 5 · OVERLOAD<br>LV 7 · PURGE WAVE</div>
+    </div>
+    <div>
+      <h3>Combat Rules of Thumb</h3>
+      <div class="kv">HIT = max(1, ATK − DEF/2) + rnd(0…ATK/4)<br>
+        SCAN is free — always open with it on a new foe<br>
+        Death = revive full HP, −half credits (not fatal)<br>
+        Repair Bay in the Hub heals free</div>
+      <h3>Boss Checklist</h3>
+      <div class="kv">☐ Level 7–9<br>☐ Aegis Shell + Ward Chip<br>☐ Rail Lance<br>☐ 4+ Repair Cells<br>☐ Full HP/EN before the north door</div>
+    </div>
+  </div>
+
+  <div style="margin-top:auto; border-top:1px solid var(--edge); padding-top:18px; display:flex; justify-content:space-between; align-items:flex-end;">
+    <div>
+      <div style="font-family:var(--mono); font-size:15px; letter-spacing:.2em; color:var(--cyan)">DEEP SIGNAL PRESS</div>
+      <div class="muted" style="font-size:9px; font-family:var(--mono); letter-spacing:.16em; margin-top:4px">RECOVERED SYSTEMS SERIES · EREBUS · MMXXVI</div>
+      <div class="muted" style="font-size:9px; margin-top:8px; max-width:46ch">EREBUS and all game systems, art, story, and music were built from
+      scratch in 6502 assembly for the NES. This manual was assembled from the game's own data.</div>
+    </div>
+    <div class="badge"><b>END</b>KEEP THE<br>VIGIL</div>
+  </div>
+
+  <div class="foot"><span>Erebus Operations Manual</span><span class="pg">BACK</span></div>
+</section>
+
+</body>
+</html>

@@ -23,6 +23,12 @@ systems, trade salvage for weapons, armor, and neural chips, learn combat
 routines, cross five connected decks, and defeat the WARDEN to re-ignite the
 core.
 
+> **📖 [Official Player's Guide (PDF)](docs/EREBUS-Guide.pdf)** — a 15-page
+> vintage-style strategy guide with the full story, deck-by-deck walkthrough,
+> top-down deck maps, a complete bestiary, the armory and item catalog, the
+> exact growth curve, and WARDEN boss strategy. Rebuildable from
+> `docs/guide/guide.html` + the capture scripts in `tools/guide/`.
+
 ## Play it
 
 `build/erebus.nes` is a standard iNES ROM — **mapper 1 (MMC1), 128 KB PRG +
