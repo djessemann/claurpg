@@ -41,6 +41,7 @@ camH:  .res 1
 sx:    .res 1
 sy:    .res 1
 oami:  .res 1
+npcct: .res 1                   ; NPC draw counter (must NOT alias oami)
 col_first: .res 1
 col_last:  .res 1
 wcol:      .res 1
@@ -865,7 +866,7 @@ build_oam:
   adc #0
   sta p2+1
   lda npc_n
-  sta sy+1                       ; count (reuse)
+  sta npcct                      ; dedicated counter (sy+1 aliased oami!)
 @nl:
   ; npc x,y in world tiles -> screen px
   ldy #0
@@ -900,7 +901,7 @@ build_oam:
   bcc :+
   inc p2+1
 :
-  dec sy+1
+  dec npcct
   bne @nl
 @clr:
   ldx oami
